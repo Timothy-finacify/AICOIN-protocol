@@ -1,0 +1,32 @@
+type Company @entity {
+  id: Bytes!
+  name: String!
+  wallet: Bytes!
+  publicKey: Bytes!
+  verified: Boolean!
+  registeredAt: BigInt!
+  totalEarned: BigInt!
+  reputation: BigInt!
+  earningsHistory: [EarningsUpdate!]! @derivedFrom(field: "company")
+}
+
+type EarningsUpdate @entity {
+  id: Bytes!
+  company: Company!
+  amount: BigInt!
+  timestamp: BigInt!
+}
+
+type BurnStat @entity {
+  id: ID!
+  totalBurned: BigInt!
+  dailyBurned: BigInt!
+  lastUpdated: BigInt!
+}
+
+type TreasuryStat @entity {
+  id: ID!
+  totalCollected: BigInt!
+  currentFee: BigInt!
+  nextHalvingBlock: BigInt!
+}

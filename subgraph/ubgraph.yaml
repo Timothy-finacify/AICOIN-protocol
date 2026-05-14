@@ -1,0 +1,29 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: CompanyRegistry
+    network: sepolia
+    source:
+      address: "0xYourContractAddress"
+      abi: CompanyRegistry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Company
+        - EarningsUpdate
+      abis:
+        - name: CompanyRegistry
+          file: ../src/CompanyRegistry.sol
+      eventHandlers:
+        - event: CompanyRegistered(indexed address,string)
+          handler: handleCompanyRegistered
+        - event: CompanyVerified(indexed address)
+          handler: handleCompanyVerified
+        - event: CompanyEarningsUpdated(indexed address,uint256)
+          handler: handleEarningsUpdated
+      file: ./src/company-registry.ts
