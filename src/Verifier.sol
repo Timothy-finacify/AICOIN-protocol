@@ -1,5 +1,5 @@
- // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
 contract Verifier {
     uint256 public constant CHALLENGE_WINDOW = 20;
@@ -21,10 +21,20 @@ contract Verifier {
     event ChallengeRaised(bytes32 indexed submissionId, address indexed challenger);
     event ChallengeResolved(bytes32 indexed submissionId, bool honest);
     event MinerSlashed(address indexed miner, uint256 amount);
+    event StakeWithdrawn(address indexed miner, uint256 amount);
     
     function stake() external payable {
         require(msg.value >= MIN_STAKE, "Insufficient stake");
         stakes[msg.sender] += msg.value;
+    }
+    
+    function withdrawStake(uint256 amount) external {
+        require(stakes[msg.sender] >= amount, "Insufficient stake balance");
+        require(amount > 0, "Amount must be positive");
+        stakes[msg.sender] -= amount;
+        emit StakeWithdrawn(msg.sender, amount);
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "Withdrawal failed");
     }
     
     function submitProof(bytes32 proofHash) external returns (bytes32) {

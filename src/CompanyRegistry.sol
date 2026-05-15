@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 contract CompanyRegistry {
     struct Company {
@@ -19,12 +19,9 @@ contract CompanyRegistry {
     event CompanyVerified(address indexed wallet);
     event CompanyEarningsUpdated(address indexed wallet, uint256 amount);
     
-    modifier onlyRegistered() {
-        require(companies[msg.sender].wallet != address(0), "Not registered");
-        _;
-    }
-    
     function register(string calldata name, bytes32 publicKey) external {
+        require(bytes(name).length > 0, "Name cannot be empty");
+        require(publicKey != bytes32(0), "Public key cannot be zero");
         require(companies[msg.sender].wallet == address(0), "Already registered");
         
         companies[msg.sender] = Company({
@@ -43,12 +40,17 @@ contract CompanyRegistry {
     }
     
     function verify(address company) external {
+        require(company != address(0), "Cannot verify zero address");
         require(companies[company].wallet != address(0), "Not registered");
+        require(!companies[company].verified, "Already verified");
         companies[company].verified = true;
         emit CompanyVerified(company);
     }
     
     function addEarnings(address company, uint256 amount) external {
+        require(company != address(0), "Company cannot be zero address");
+        require(companies[company].wallet != address(0), "Not registered");
+        require(amount > 0, "Amount must be positive");
         companies[company].totalEarned += amount;
         emit CompanyEarningsUpdated(company, amount);
     }

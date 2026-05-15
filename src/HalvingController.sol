@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 contract HalvingController {
     uint256 public currentHalving;
     uint256 public blockReward;
     uint256 public nextHalvingBlock;
-    uint256 public constant HALVING_INTERVAL = 210000; // ~4 years
-    uint256 public constant INITIAL_REWARD = 100 * 10**9; // 100 AIC in nano units
+    uint256 public constant HALVING_INTERVAL = 210000;
+    uint256 public constant INITIAL_REWARD = 100 * 10**9;
     uint256 public constant MAX_HALVINGS = 34;
     bool public miningActive;
     
@@ -21,7 +21,7 @@ contract HalvingController {
     
     function checkAndExecuteHalving() public {
         require(miningActive, "Mining ended");
-        require(block.number >= nextHalvingBlock, "Too early for halving");
+        require(block.number >= nextHalvingBlock, "Too early");
         require(currentHalving < MAX_HALVINGS, "Max halvings reached");
         
         currentHalving++;
