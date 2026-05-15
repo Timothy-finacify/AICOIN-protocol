@@ -35,16 +35,28 @@ export default function MinePage() {
     { name: "Apple M2 Pro", memory: "16GB", hashRate: 12.6, power: "30W" },
     { name: "CPU Mining", memory: "System", hashRate: 2.1, power: "65W" },
   ];
-
-  const handleToggleMining = () => {
+  
+  const handleToggleMining = async () => {
     if (isMining) {
-      setIsMining(false);
-      setHashRate(0);
+        // Stop mining
+        await fetch("http://localhost:5000/stop", { method: "POST" });
+        setIsMining(false);
+        setHashRate(0);
     } else {
-      setIsMining(true);
-      setHashRate(gpuList[selectedGPU].hashRate);
+        // Start mining
+        await fetch("http://localhost:5000/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                wallet: address || "0x7A92Ed305671429597FCe407a010a6868283e577",
+                iterations: 100
+            })
+        });
+        setIsMining(true);
+        setHashRate(gpuList[selectedGPU].hashRate);
     }
-  };
+}; 
+
 
   return (
     <div className="page-container max-w-5xl mx-auto px-4">
