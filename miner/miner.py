@@ -1,6 +1,6 @@
 """
-AICOIN Mining Client - Phase 3 (Real AI Model)
-Proof of Useful AI Work with actual ONNX/PyTorch inference
+AICOIN Mining Client - Connected to Sepolia Testnet
+Proof of Useful AI Work with real blockchain submission
 """
 
 import hashlib
@@ -8,43 +8,60 @@ import json
 import time
 import os
 import numpy as np
+from web3 import Web3
+
+# ============================================
+# CONFIGURATION
+# ============================================
+SEPOLIA_RPC = "https://eth-sepolia.g.alchemy.com/v2/z0OM_42vihFYL5R31VT9m"
+VERIFIER_ADDRESS = "0xFd1E3587224200c5c9d30Bb4f4852Ef200aA7240"
+PRIVATE_KEY = "0xd633c30688b6c17d932c8e91100393ddd41d49f809b4d2dd5207ef87e03b6e1f"
+
+VERIFIER_ABI = [
+    {
+        "name": "submitProof",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [{"name": "proofHash", "type": "bytes32"}],
+        "outputs": [{"type": "bytes32"}],
+    },
+    {
+        "name": "stakes",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "", "type": "address"}],
+        "outputs": [{"type": "uint256"}],
+    },
+]
 
 class AICoinMiner:
-    """Base mining client for AICOIN network."""
-    
-    def __init__(self, wallet_address):
+    def __init__(self, wallet_address, private_key):
         self.wallet = wallet_address
+        self.private_key = private_key
         self.hash_rate = 0
         self.total_mined = 0
         self.is_mining = False
         self.model = None
         self.model_type = None
         
+        # Connect to Sepolia
+        self.w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
+        if self.w3.is_connected():
+            print(f"Connected to Sepolia. Block: {self.w3.eth.block_number}")
+        else:
+            print("Failed to connect to Sepolia!")
+            
+        self.verifier = self.w3.eth.contract(address=VERIFIER_ADDRESS, abi=VERIFIER_ABI)
+        
     def load_model(self, model_path=None):
-        """Load an AI model for inference. Falls back to PyTorch MobileNet if no model provided."""
-        
-        # Try ONNX model first
-        if model_path and os.path.exists(model_path):
-            try:
-                import onnxruntime as ort
-                self.model = ort.InferenceSession(model_path)
-                self.model_type = "onnx"
-                print(f"ONNX model loaded: {model_path}")
-                return True
-            except Exception as e:
-                print(f"ONNX load failed: {e}")
-        
-        # Fallback: Create simple PyTorch model
         try:
             import torch
             import torchvision.models as models
-            
             self.model = models.mobilenet_v3_small(pretrained=True)
             self.model.eval()
             self.model_type = "pytorch"
             print("PyTorch MobileNetV3 loaded (real AI model)")
             return True
-            
         except ImportError:
             print("PyTorch not available, using CPU-based model")
             self.model = self._create_simple_model()
@@ -52,11 +69,8 @@ class AICoinMiner:
             return True
     
     def _create_simple_model(self):
-        """Create a lightweight model for CPU-only mining."""
-        # Simple neural network simulation using numpy
         class SimpleModel:
             def predict(self, input_data):
-                # Simulate actual computation with matrix operations
                 weights = np.random.randn(100, 100).astype(np.float32)
                 x = np.array(input_data).flatten()[:100]
                 if len(x) < 100:
@@ -69,22 +83,15 @@ class AICoinMiner:
                 }
         return SimpleModel()
     
-    def preprocess_input(self, raw_data=None):
-        """Preprocess input data for model inference."""
-        if raw_data is None:
-            # Generate random input matching model expectations
-            if self.model_type == "pytorch":
-                import torch
-                return torch.randn(1, 3, 224, 224)
-            else:
-                return np.random.rand(1, 3, 224, 224).astype(np.float32)
-        return raw_data
+    def preprocess_input(self):
+        if self.model_type == "pytorch":
+            import torch
+            return torch.randn(1, 3, 224, 224)
+        return np.random.rand(1, 3, 224, 224).astype(np.float32)
     
-    def run_inference(self, input_data=None):
-        """Run real AI model inference."""
+    def run_inference(self):
         start_time = time.time()
-        
-        input_data = self.preprocess_input(input_data)
+        input_data = self.preprocess_input()
         
         if self.model_type == "pytorch":
             import torch
@@ -95,24 +102,12 @@ class AICoinMiner:
                 result = {
                     "top_class": top_pred.indices[0][0].item(),
                     "confidence": top_pred.values[0][0].item(),
-                    "all_classes": top_pred.indices[0].tolist()[:5],
                     "output_hash": hashlib.sha256(output.numpy().tobytes()).hexdigest()
                 }
-        
-        elif self.model_type == "onnx":
-            input_name = self.model.get_inputs()[0].name
-            output = self.model.run(None, {input_name: input_data})
-            result = {
-                "output_hash": hashlib.sha256(output[0].tobytes()).hexdigest(),
-                "shape": str(output[0].shape),
-                "mean_activation": float(np.mean(output[0]))
-            }
-        
         else:
             result = self.model.predict(input_data)
         
         computation_time = time.time() - start_time
-        
         return {
             **result,
             "model_type": self.model_type,
@@ -121,8 +116,6 @@ class AICoinMiner:
         }
     
     def generate_proof(self, inference_result):
-        """Generate cryptographic proof of correct inference."""
-        # Create a deterministic proof from the inference result
         proof_data = json.dumps({
             "output_hash": inference_result.get("output_hash", ""),
             "confidence": inference_result.get("confidence", 0),
@@ -130,26 +123,38 @@ class AICoinMiner:
             "computation_time": inference_result["computation_time"],
             "timestamp": inference_result["timestamp"]
         }, sort_keys=True)
-        
         return hashlib.sha256(proof_data.encode()).hexdigest()
     
-    def submit_to_network(self, proof):
-        """Submit proof to blockchain network."""
-        print(f"  Proof: {proof[:32]}...")
-        return True
+    def submit_to_blockchain(self, proof_hash):
+        """Actually submit proof to Verifier contract on Sepolia"""
+        try:
+            proof_bytes32 = "0x" + proof_hash
+            
+            # Build transaction
+            tx = self.verifier.functions.submitProof(proof_bytes32).build_transaction({
+                'from': self.wallet,
+                'nonce': self.w3.eth.get_transaction_count(self.wallet),
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price,
+                'chainId': 11155111,  # Sepolia
+            })
+            
+            # Sign and send
+            signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            
+            print(f"  ✅ Proof submitted to Sepolia!")
+            print(f"  TX: {tx_hash.hex()[:32]}...")
+            return tx_hash.hex()
+            
+        except Exception as e:
+            print(f"  ❌ Failed to submit: {e}")
+            return None
     
-    def claim_reward(self):
-        """Claim block reward for successful mining."""
-        reward = 100 * (10**9)  # 100 AIC in nano units
-        self.total_mined += reward
-        return reward
-    
-    def mining_loop(self, iterations=10):
-        """Main mining loop with real AI inference."""
+    def mining_loop(self, iterations=5):
         self.is_mining = True
-        total_compute_time = 0
-        
-        print(f"\nMining started. Wallet: {self.wallet}")
+        print(f"\nMining started on Sepolia Testnet")
+        print(f"Wallet: {self.wallet}")
         print(f"Model: {self.model_type}")
         print("-" * 55)
         
@@ -162,102 +167,42 @@ class AICoinMiner:
             # Run real AI inference
             result = self.run_inference()
             
-            # Show what the AI computed
             if "top_class" in result:
                 print(f"  AI classified: Class #{result['top_class']}")
                 print(f"  Confidence: {result['confidence']:.4f}")
             print(f"  Compute time: {result['computation_time']:.4f}s")
             
-            total_compute_time += result['computation_time']
-            
             # Generate proof
             proof = self.generate_proof(result)
-            self.submit_to_network(proof)
+            print(f"  Proof: {proof[:32]}...")
             
-            # Claim reward
-            reward = self.claim_reward()
-            print(f"  Mined: {reward / 10**9:.1f} AIC")
+            # Submit to Sepolia blockchain
+            tx_hash = self.submit_to_blockchain(proof)
             
-            self.hash_rate = 1 / result['computation_time'] if result['computation_time'] > 0 else 0
+            if tx_hash:
+                self.total_mined += 100 * (10**9)
+                print(f"  Mined: 100.0 AIC")
             
-            time.sleep(0.3)
+            time.sleep(3)  # Wait between submissions
         
         self.is_mining = False
-        
-        # Show summary
         print("\n" + "=" * 55)
         print("MINING SESSION COMPLETE")
-        print(f"Model used: {self.model_type}")
-        print(f"Total AI computations: {iterations}")
-        print(f"Total compute time: {total_compute_time:.2f}s")
-        print(f"Average hash rate: {iterations/total_compute_time:.2f} proofs/sec")
         print(f"Total mined: {self.total_mined / 10**9:.1f} AIC")
         print("=" * 55)
-        
-    def get_status(self):
-        """Return current mining status."""
-        return {
-            "wallet": self.wallet,
-            "model": self.model_type,
-            "hash_rate": round(self.hash_rate, 2),
-            "total_mined": self.total_mined,
-            "is_mining": self.is_mining
-        }
 
-
-# ============================================
-# GPU MINER
-# ============================================
-
-class GPUMediciner(AICoinMiner):
-    """GPU-accelerated mining client."""
-    
-    def __init__(self, wallet_address):
-        super().__init__(wallet_address)
-        self.device = self._detect_gpu()
-        
-    def _detect_gpu(self):
-        try:
-            import torch
-            if torch.cuda.is_available():
-                name = torch.cuda.get_device_name(0)
-                print(f"GPU detected: {name}")
-                return "cuda"
-        except ImportError:
-            pass
-        
-        try:
-            import onnxruntime as ort
-            providers = ort.get_available_providers()
-            if 'CUDAExecutionProvider' in providers:
-                print("ONNX GPU provider available")
-                return "onnx-gpu"
-        except ImportError:
-            pass
-        
-        print("No GPU detected, using CPU")
-        return "cpu"
-
-
-# ============================================
-# CLI
-# ============================================
 
 if __name__ == "__main__":
     import sys
     
-    wallet = sys.argv[1] if len(sys.argv) > 1 else "0xDefaultWallet"
-    model_path = sys.argv[2] if len(sys.argv) > 2 else None
-    iterations = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+    wallet = sys.argv[1] if len(sys.argv) > 1 else "0x7A92Ed305671429597FCe407a010a6868283e577"
+    iterations = int(sys.argv[2]) if len(sys.argv) > 2 else 2
     
     print("=" * 55)
-    print("  AICOIN MINING CLIENT")
+    print("  AICOIN MINING CLIENT - SEPOLIA TESTNET")
     print("  Proof of Useful AI Work")
     print("=" * 55)
     
-    miner = GPUMediciner(wallet)
-    miner.load_model(model_path)
+    miner = AICoinMiner(wallet, PRIVATE_KEY)
+    miner.load_model()
     miner.mining_loop(iterations=iterations)
-    
-    status = miner.get_status()
-    print(f"\nFinal Status: {json.dumps(status, indent=2)}") 

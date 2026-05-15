@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-interface IAICOIN {
-    function transfer(address to, uint256 amount) external returns (bool);
-}
-
 contract PaymentRouter {
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
     uint256 public constant BURN_PERCENT = 20;
@@ -37,10 +33,17 @@ contract PaymentRouter {
         
         emit PaymentRouted(company, amount, burnAmount, treasuryAmount, companyAmount);
         
-        require(IAICOIN(aicoinToken).transfer(BURN_ADDRESS, burnAmount), "Burn transfer failed");
-        require(IAICOIN(aicoinToken).transfer(treasury, treasuryAmount), "Treasury transfer failed");
-        require(IAICOIN(aicoinToken).transfer(company, companyAmount), "Company transfer failed");
+        _safeTransfer(BURN_ADDRESS, burnAmount);
+        _safeTransfer(treasury, treasuryAmount);
+        _safeTransfer(company, companyAmount);
         
         return true;
     }
-}
+    
+    function _safeTransfer(address to, uint256 amount) internal {
+        (bool success, bytes memory data) = aicoinToken.call(
+            abi.encodeWithSignature("transfer(address,uint256)", to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Transfer failed");
+    }
+} 
