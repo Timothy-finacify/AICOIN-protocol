@@ -44,7 +44,6 @@ class AICoinMiner:
         self.model = None
         self.model_type = None
         
-        # Connect to Sepolia
         self.w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
         if self.w3.is_connected():
             print(f"Connected to Sepolia. Block: {self.w3.eth.block_number}")
@@ -126,29 +125,27 @@ class AICoinMiner:
         return hashlib.sha256(proof_data.encode()).hexdigest()
     
     def submit_to_blockchain(self, proof_hash):
-        """Actually submit proof to Verifier contract on Sepolia"""
+        """Submit proof to Verifier contract on Sepolia"""
         try:
             proof_bytes32 = "0x" + proof_hash
             
-            # Build transaction
             tx = self.verifier.functions.submitProof(proof_bytes32).build_transaction({
                 'from': self.wallet,
                 'nonce': self.w3.eth.get_transaction_count(self.wallet),
                 'gas': 200000,
                 'gasPrice': self.w3.eth.gas_price,
-                'chainId': 11155111,  # Sepolia
+                'chainId': 11155111,
             })
             
-            # Sign and send
             signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             
-            print(f"  ✅ Proof submitted to Sepolia!")
+            print(f"  [OK] Proof submitted to Sepolia!")
             print(f"  TX: {tx_hash.hex()[:32]}...")
             return tx_hash.hex()
             
         except Exception as e:
-            print(f"  ❌ Failed to submit: {e}")
+            print(f"  [FAIL] Failed to submit: {e}")
             return None
     
     def mining_loop(self, iterations=5):
@@ -164,7 +161,6 @@ class AICoinMiner:
             
             print(f"\n[Block {i+1}/{iterations}]")
             
-            # Run real AI inference
             result = self.run_inference()
             
             if "top_class" in result:
@@ -172,18 +168,16 @@ class AICoinMiner:
                 print(f"  Confidence: {result['confidence']:.4f}")
             print(f"  Compute time: {result['computation_time']:.4f}s")
             
-            # Generate proof
             proof = self.generate_proof(result)
             print(f"  Proof: {proof[:32]}...")
             
-            # Submit to Sepolia blockchain
             tx_hash = self.submit_to_blockchain(proof)
             
             if tx_hash:
                 self.total_mined += 100 * (10**9)
                 print(f"  Mined: 100.0 AIC")
             
-            time.sleep(3)  # Wait between submissions
+            time.sleep(3)
         
         self.is_mining = False
         print("\n" + "=" * 55)
@@ -205,4 +199,4 @@ if __name__ == "__main__":
     
     miner = AICoinMiner(wallet, PRIVATE_KEY)
     miner.load_model()
-    miner.mining_loop(iterations=iterations)
+    miner.mining_loop(iterations=iterations) 
