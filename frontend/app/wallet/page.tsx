@@ -74,7 +74,10 @@ export default function WalletPage() {
           <span className="text-xs uppercase tracking-wider text-muted">Total Balance</span>
           <span className="text-xs px-3 py-1 rounded-full" style={{ backgroundColor: "rgba(0, 212, 170, 0.1)", color: "var(--color-node-teal)" }}>AICOIN</span>
         </div>
-        <div className="balance-amount">{formattedBalance}</div>
+        <div className="flex items-center gap-3 mb-2">
+          <img src="/images/aic-symbol.svg" alt="AIC" className="h-10 w-auto" />
+          <span className="balance-amount">{formattedBalance}</span>
+        </div>
         <div className="balance-symbol">AIC</div>
         <div className="address-bar mt-6">
           <span className="address-text">{address ? shortenAddress(address) : ""}</span>
@@ -84,18 +87,13 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* Instant Payments Session Card */}
       <div className="feature-card mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Zap className="w-5 h-5 text-accent" />
           <h3 className="section-title">Instant Payments</h3>
         </div>
         <p className="text-sm text-muted mb-3">Approve once. All AI requests auto-process without MetaMask popups.</p>
-        <button 
-          onClick={() => approveSession(SESSION_ADDRESS, parseUnits("100", 9))}
-          disabled={isApproving}
-          className="send-btn"
-        >
+        <button onClick={() => approveSession(SESSION_ADDRESS, parseUnits("100", 9))} disabled={isApproving} className="send-btn">
           {isApproving ? "Approving..." : "Enable Instant AI Payments (100 AIC/day)"}
         </button>
       </div>
@@ -126,10 +124,10 @@ export default function WalletPage() {
         <div className="feature-card text-center">
           <h2 className="section-title mb-6">Receive AICOIN</h2>
           <div className="flex justify-center mb-6">
-  <div className="bg-white p-4 rounded-xl">
-    <QRCodeSVG value={address || ""} size={180} />
-  </div>
-</div>
+            <div className="bg-white p-4 rounded-xl">
+              <QRCodeSVG value={address || ""} size={180} />
+            </div>
+          </div>
           <div className="address-bar inline-flex"><span className="address-text">{address || "0x..."}</span></div>
           <button onClick={copyAddress} className="send-btn mt-4 w-auto px-6 inline-block">{copied ? "Copied!" : "Copy Address"}</button>
         </div>
@@ -143,8 +141,7 @@ export default function WalletPage() {
           </div>
         </div>
       )}
-
-      <div className="feature-card mt-8">
+            <div className="feature-card mt-8">
         <div className="flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-muted" /><h2 className="section-title">Transaction History</h2></div>
         <div className="tx-empty"><p className="tx-empty-title">No transactions yet</p></div>
       </div>

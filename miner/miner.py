@@ -1,8 +1,3 @@
-"""
-AICOIN Mining Client - Connected to Sepolia Testnet
-Proof of Useful AI Work with real blockchain submission
-"""
-
 import hashlib
 import json
 import time
@@ -43,10 +38,14 @@ class AICoinMiner:
         self.is_mining = False
         self.model = None
         self.model_type = None
+        self.nonce = None  # Track nonce locally
         
+        # Connect to Sepolia
         self.w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
         if self.w3.is_connected():
+            self.nonce = self.w3.eth.get_transaction_count(wallet_address)
             print(f"Connected to Sepolia. Block: {self.w3.eth.block_number}")
+            print(f"Starting nonce: {self.nonce}")
         else:
             print("Failed to connect to Sepolia!")
             
@@ -56,7 +55,11 @@ class AICoinMiner:
         try:
             import torch
             import torchvision.models as models
-            self.model = models.mobilenet_v3_small(pretrained=True)
+            from torchvision.models import MobileNet_V3_Small_Weights
+            
+            # FIX: Use weights parameter instead of pretrained=True
+            weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1
+            self.model = models.mobilenet_v3_small(weights=weights)
             self.model.eval()
             self.model_type = "pytorch"
             print("PyTorch MobileNetV3 loaded (real AI model)")
@@ -125,27 +128,38 @@ class AICoinMiner:
         return hashlib.sha256(proof_data.encode()).hexdigest()
     
     def submit_to_blockchain(self, proof_hash):
-        """Submit proof to Verifier contract on Sepolia"""
+        """Submit proof to Verifier contract on Sepolia with local nonce management"""
         try:
             proof_bytes32 = "0x" + proof_hash
             
+            # Build transaction with local nonce
             tx = self.verifier.functions.submitProof(proof_bytes32).build_transaction({
                 'from': self.wallet,
-                'nonce': self.w3.eth.get_transaction_count(self.wallet),
+                'nonce': self.nonce,  # Use local nonce
                 'gas': 200000,
                 'gasPrice': self.w3.eth.gas_price,
                 'chainId': 11155111,
             })
             
+            # Sign and send
             signed_tx = self.w3.eth.account.sign_transaction(tx, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            
+            # Increment local nonce
+            self.nonce += 1
             
             print(f"  [OK] Proof submitted to Sepolia!")
             print(f"  TX: {tx_hash.hex()[:32]}...")
             return tx_hash.hex()
             
         except Exception as e:
-            print(f"  [FAIL] Failed to submit: {e}")
+            # On failure, refresh nonce from network
+            error_msg = str(e)
+            if "nonce" in error_msg.lower() or "underpriced" in error_msg.lower():
+                self.nonce = self.w3.eth.get_transaction_count(self.wallet)
+                print(f"  [RETRY] Nonce refreshed to {self.nonce}")
+            else:
+                print(f"  [FAIL] {error_msg[:80]}")
             return None
     
     def mining_loop(self, iterations=5):
@@ -177,7 +191,8 @@ class AICoinMiner:
                 self.total_mined += 100 * (10**9)
                 print(f"  Mined: 100.0 AIC")
             
-            time.sleep(3)
+            # Wait for transaction to be mined before next submission
+            time.sleep(15)  # Increased from 3s to 15s for Sepolia
         
         self.is_mining = False
         print("\n" + "=" * 55)

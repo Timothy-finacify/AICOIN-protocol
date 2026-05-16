@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 24" width="60" height="24">
+  <defs>
+    <linearGradient id="aic-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6C5CE7"/>
+      <stop offset="100%" style="stop-color:#4A9DFF"/>
+    </linearGradient>
+  </defs>
+  <text x="0" y="19" font-family="Arial" font-weight="900" font-size="22" fill="url(#aic-gradient)">AIC</text>
+  <line x1="2" y1="11" x2="52" y2="11" stroke="url(#aic-gradient)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="2" y1="16" x2="52" y2="16" stroke="url(#aic-gradient)" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

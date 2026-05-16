@@ -51,8 +51,9 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link href="/" className="navbar-brand">
-          AICOIN
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/images/aic-symbol-white.svg" alt="AIC" className="h-6 w-auto" />
+          <span className="navbar-brand">AICOIN</span>
         </Link>
         
         <div className="navbar-links">
