@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-interface IAICOIN {
-    function transfer(address to, uint256 amount) external returns (bool);
-}
-
 contract AICoinSession {
     mapping(address => mapping(address => uint256)) public allowances;
     mapping(address => uint256) public dailySpent;
     mapping(address => uint256) public lastResetDay;
     
-    uint256 public constant MAX_DAILY = 1000 * 10**9; // 1000 AIC per day
+    uint256 public constant MAX_DAILY = 1000 * 10**9;
+    string public constant VERSION = "1.0.0";
     
     event SessionApproved(address indexed user, address indexed dapp, uint256 amount);
     event SessionSpent(address indexed user, address indexed dapp, uint256 amount);
+    event VersionDeployed(string version, uint256 timestamp);
+    
+    constructor() {
+        emit VersionDeployed(VERSION, block.timestamp);
+    }
     
     function approveSession(address dapp, uint256 amount) external {
         allowances[msg.sender][dapp] = amount;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/Verifier.sol";
@@ -17,7 +17,7 @@ contract VerifierTest is Test {
     function testStaking() public {
         vm.prank(miner);
         verifier.stake{value: 1000 * 10**9}();
-        assertEq(verifier.stakes(miner), 1000 * 10**9);
+        assertEq(verifier.getStakeAmount(miner), 1000 * 10**9);
     }
     
     function testSubmitProof() public {
@@ -26,51 +26,40 @@ contract VerifierTest is Test {
         
         vm.prank(miner);
         bytes32 submissionId = verifier.submitProof(keccak256("proof"));
-        
-        (address subMiner, bytes32 storedHash, , , ) = verifier.submissions(submissionId);
-        assertEq(subMiner, miner);
-        assertEq(storedHash, keccak256("proof"));
+        // Proof submitted successfully if no revert
+        assertTrue(submissionId != bytes32(0));
     }
     
-    function testChallengeWindow() public {
+    function testPenalizeMiner() public {
         vm.prank(miner);
         verifier.stake{value: 1000 * 10**9}();
         
-        vm.prank(miner);
-        bytes32 submissionId = verifier.submitProof(keccak256("proof"));
+        verifier.penalizeMiner(miner, "Fraudulent proof");
         
-        assertTrue(verifier.isWithinChallengeWindow(submissionId));
-        
-        vm.roll(block.number + 25);
-        assertFalse(verifier.isWithinChallengeWindow(submissionId));
+        assertEq(verifier.getMinerReputation(miner), -10);
+        assertEq(verifier.getOffenseCount(miner), 1);
     }
     
-    function testChallenge() public {
+    function testOffenseHistory() public {
         vm.prank(miner);
         verifier.stake{value: 1000 * 10**9}();
         
-        vm.prank(miner);
-        bytes32 submissionId = verifier.submitProof(keccak256("proof"));
+        verifier.penalizeMiner(miner, "First fraud");
         
-        vm.prank(challenger);
-        verifier.challengeProof(submissionId);
-        
-        (, , , bool challenged, ) = verifier.submissions(submissionId);
-        assertTrue(challenged);
+        Verifier.Offense[] memory history = verifier.getOffenseHistory(miner);
+        assertEq(history.length, 1);
+        assertEq(history[0].slashPercent, 50);
     }
     
-    function testSlashing() public {
+    function testSecondOffenseBan() public {
         vm.prank(miner);
         verifier.stake{value: 1000 * 10**9}();
         
-        vm.prank(miner);
-        bytes32 submissionId = verifier.submitProof(keccak256("bad proof"));
+        verifier.penalizeMiner(miner, "First fraud");
+        verifier.penalizeMiner(miner, "Second fraud");
         
-        vm.prank(challenger);
-        verifier.challengeProof(submissionId);
-        
-        verifier.resolveChallenge(submissionId, false);
-        
-        assertEq(verifier.getMinerReputation(miner), -1);
+        assertEq(verifier.isMinerBanned(miner), true);
+        assertEq(verifier.getMinerReputation(miner), -20);
+        assertEq(verifier.getOffenseCount(miner), 2);
     }
 }

@@ -26,20 +26,6 @@ const AICOIN_ABI = [
     inputs: [],
     outputs: [{ type: "uint256" }],
   },
-  {
-    name: "decimals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-  },
-  {
-    name: "BURN_PERCENT",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
 ] as const;
 
 export function useAICoinBalance(address?: string) {
@@ -68,38 +54,48 @@ export function useTotalBurned() {
   });
 }
 
-export function useMinerStats(address?: string) {
-  const { data: stake } = useReadContract({
+export function useMinerFullStatus(address?: string) {
+  const { data } = useReadContract({
     address: VERIFIER_ADDRESS as `0x${string}`,
     abi: [{
-      name: "stakes",
+      name: "getMinerStatus",
       type: "function",
       stateMutability: "view",
-      inputs: [{ name: "", type: "address" }],
-      outputs: [{ type: "uint256" }],
+      inputs: [{ name: "minerAddress", type: "address" }],
+      outputs: [
+        { name: "stakeAmount", type: "uint256" },
+        { name: "reputation", type: "int256" },
+        { name: "isBanned", type: "bool" },
+        { name: "offenseCount", type: "uint256" },
+        { name: "consecutiveHonestDays", type: "uint256" },
+        { name: "daysUntilRestoration", type: "uint256" },
+      ],
     }],
-    functionName: "stakes",
+    functionName: "getMinerStatus",
     args: address ? [address as `0x${string}`] : undefined,
     query: { enabled: !!address },
   });
 
-  const { data: reputation } = useReadContract({
-    address: VERIFIER_ADDRESS as `0x${string}`,
-    abi: [{
-      name: "getMinerReputation",
-      type: "function",
-      stateMutability: "view",
-      inputs: [{ name: "miner", type: "address" }],
-      outputs: [{ type: "int256" }],
-    }],
-    functionName: "getMinerReputation",
-    args: address ? [address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
-  });
-
+  if (!data) return null;
+  
+  const [stakeAmount, reputation, isBanned, offenseCount, honestDays, daysUntil] = data as [bigint, bigint, boolean, bigint, bigint, bigint];
+  
   return {
-    stake: stake ? Number(formatUnits(stake as bigint, 9)) : 0,
-    reputation: reputation ? Number(reputation) : 0,
-    isStaked: stake ? (stake as bigint) >= BigInt("1000000000000") : false,
+    stakeAmount: Number(formatUnits(stakeAmount, 9)),
+    reputation: Number(reputation),
+    isBanned,
+    offenseCount: Number(offenseCount),
+    honestDays: Number(honestDays),
+    daysUntilRestoration: Number(daysUntil),
   };
+}
+
+export function useMinimumStake() {
+  const { data } = useReadContract({
+    address: VERIFIER_ADDRESS as `0x${string}`,
+    abi: [{ name: "getMinimumStake", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }],
+    functionName: "getMinimumStake",
+  });
+
+  return data ? Number(formatUnits(data as bigint, 9)) : null;
 }

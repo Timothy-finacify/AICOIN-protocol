@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -9,14 +10,17 @@ contract HalvingController {
     uint256 public constant INITIAL_REWARD = 100 * 10**9;
     uint256 public constant MAX_HALVINGS = 34;
     bool public miningActive;
+    string public constant VERSION = "1.0.0";
     
     event HalvingExecuted(uint256 halvingNumber, uint256 newReward, uint256 blockNumber);
     event MiningEnded(uint256 blockNumber);
+    event VersionDeployed(string version, uint256 timestamp);
     
     constructor() {
         blockReward = INITIAL_REWARD;
         nextHalvingBlock = block.number + HALVING_INTERVAL;
         miningActive = true;
+        emit VersionDeployed(VERSION, block.timestamp);
     }
     
     function checkAndExecuteHalving() public {
@@ -39,9 +43,9 @@ contract HalvingController {
     
     function getCurrentReward() public view returns (uint256) {
         if (block.number >= nextHalvingBlock && miningActive) {
-            uint256 nextHalving = currentHalving + 1;
-            if (nextHalving >= MAX_HALVINGS) return 0;
-            return INITIAL_REWARD / (2 ** nextHalving);
+            uint256 nextH = currentHalving + 1;
+            if (nextH >= MAX_HALVINGS) return 0;
+            return INITIAL_REWARD / (2 ** nextH);
         }
         return blockReward;
     }

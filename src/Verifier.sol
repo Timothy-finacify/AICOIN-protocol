@@ -1,25 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-interface IUniswapV3Pool {
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function observe(uint32[] calldata secondsAgos)
-        external
-        view
-        returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
+interface IChainlinkAggregator {
+    function latestRoundData() external view returns (
+        uint80 roundId,
+        int256 answer,
+        uint256 startedAt,
+        uint256 updatedAt,
+        uint80 answeredInRound
+    );
 }
 
 contract Verifier {
     uint256 public constant CHALLENGE_WINDOW = 20;
-    uint256 public constant TARGET_STAKE_USD = 10; // $10 USD
+    uint256 public constant TARGET_STAKE_USD = 10;
     uint256 public constant REPUTATION_PENALTY = 10;
     uint256 public constant RESTORATION_WAIT_DAYS = 30;
     uint256 public constant FULL_RESTORATION_DAYS = 365;
+    string public constant VERSION = "1.0.0";
     
-    address public uniswapPool;
-    address public aicToken;
-    address public usdcToken;
+    address public priceFeed;
+    address public governance;
+    bool public useManualStake = true;
+    uint256 public manualStakeAmount = 10000 * 10**9;
+    bool public paused;
     
     struct Offense {
         uint256 timestamp;
@@ -44,50 +48,75 @@ contract Verifier {
     event MinerBanned(address indexed miner);
     event ReputationRestored(address indexed miner, int256 newReputation, uint256 honestDays);
     event StakeUpdated(address indexed miner, uint256 oldAmount, uint256 newAmount);
+    event PriceFeedUpdated(address indexed oldFeed, address indexed newFeed);
+    event ManualStakeDisabled();
+    event VersionDeployed(string version, uint256 timestamp);
+    event Paused();
+    event Unpaused();
     
-    constructor(address _uniswapPool, address _aicToken, address _usdcToken) {
-        uniswapPool = _uniswapPool;
-        aicToken = _aicToken;
-        usdcToken = _usdcToken;
+    modifier whenNotPaused() {
+        require(!paused, "Contract paused");
+        _;
+    }
+    
+    constructor() {
+        governance = msg.sender;
+        emit VersionDeployed(VERSION, block.timestamp);
     }
     
     // ============================================================
-    // DYNAMIC STAKE CALCULATION
+    // GOVERNANCE
     // ============================================================
     
+    function pause() external {
+        require(msg.sender == governance, "Only governance");
+        paused = true;
+        emit Paused();
+    }
+    
+    function unpause() external {
+        require(msg.sender == governance, "Only governance");
+        paused = false;
+        emit Unpaused();
+    }
+    
+    // ============================================================
+    // PRICE FEED
+    // ============================================================
+    
+    function setPriceFeed(address _priceFeed) external {
+        require(msg.sender == governance, "Only governance");
+        address oldFeed = priceFeed;
+        priceFeed = _priceFeed;
+        emit PriceFeedUpdated(oldFeed, _priceFeed);
+    }
+    
+    function disableManualStake() external {
+        require(msg.sender == governance, "Only governance");
+        require(priceFeed != address(0), "Price feed must be set first");
+        useManualStake = false;
+        emit ManualStakeDisabled();
+    }
+    
+    function setManualStakeAmount(uint256 amount) external {
+        require(msg.sender == governance, "Only governance");
+        manualStakeAmount = amount;
+    }
+    
     function getAICPrice() public view returns (uint256) {
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = 3600; // 1 hour ago
-        secondsAgos[1] = 0;    // now
-        
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(uniswapPool).observe(secondsAgos);
-        
-        int56 tickDifference = tickCumulatives[1] - tickCumulatives[0];
-        int24 timeWeightedTick = int24(tickDifference / 3600);
-        
-        // Convert tick to price: price = 1.0001^tick
-        // For AIC/USDC pool where USDC is token0:
-        // If AIC is token1, price = 1.0001^tick * 10^(decimals0-decimals1)
-        // Simplified: we assume AIC is token1 and USDC is token0 (6 decimals)
-        uint256 price = uint256(int256(1000000 * 10**12)); // Base: $1.00 = 1e18
-        // This is a simplified price calculation. Production needs full oracle.
-        return price;
+        if (priceFeed == address(0)) return 0;
+        (, int256 answer, , , ) = IChainlinkAggregator(priceFeed).latestRoundData();
+        if (answer <= 0) return 0;
+        return uint256(answer) * 10**10;
     }
     
     function getMinimumStake() public view returns (uint256) {
-        uint256 aicPriceInUSDC = getAICPrice(); // USDC has 6 decimals
-        
-        // TARGET_STAKE_USD * 10^18 / aicPriceInUSDC
-        // If AIC = $0.001, stake = 10 * 10^18 / (0.001 * 10^18) = 10,000 AIC
-        // If AIC = $100, stake = 10 * 10^18 / (100 * 10^18) = 0.1 AIC (in nano: 10^8)
-        
-        if (aicPriceInUSDC == 0) return 10000 * 10**9; // Fallback: 10,000 AIC
-        
-        uint256 stakeInNano = (TARGET_STAKE_USD * 10**27) / aicPriceInUSDC;
-        
-        // Minimum floor: 0.1 AIC (100,000,000 nano)
-        if (stakeInNano < 100000000) stakeInNano = 100000000;
-        
+        if (useManualStake) return manualStakeAmount;
+        uint256 aicPriceInUSD = getAICPrice();
+        if (aicPriceInUSD == 0) return 10000 * 10**9;
+        uint256 stakeInNano = (TARGET_STAKE_USD * 10**36) / aicPriceInUSD;
+        if (stakeInNano < 10000000) stakeInNano = 10000000;
+        if (stakeInNano > 100000 * 10**9) stakeInNano = 100000 * 10**9;
         return stakeInNano;
     }
     
@@ -95,18 +124,13 @@ contract Verifier {
     // STAKING
     // ============================================================
     
-    function stake() external payable {
+    function stake() external payable whenNotPaused {
         require(!miners[msg.sender].isBanned, "Miner is banned");
-        
         uint256 minStake = getMinimumStake();
         require(msg.value >= minStake, "Insufficient stake");
-        
         miners[msg.sender].stakeAmount = msg.value;
-        
-        // Reset honest day counter on new stake
         miners[msg.sender].consecutiveHonestDays = 0;
         miners[msg.sender].restorationStartDay = 0;
-        
         emit StakeUpdated(msg.sender, 0, msg.value);
     }
     
@@ -114,51 +138,44 @@ contract Verifier {
         MinerInfo storage miner = miners[msg.sender];
         require(miner.stakeAmount >= amount, "Insufficient stake");
         require(amount > 0, "Amount must be positive");
-        
         uint256 minStake = getMinimumStake();
-        require(miner.stakeAmount - amount >= minStake, "Must maintain minimum stake");
-        
+        require(miner.stakeAmount - amount >= minStake || miner.stakeAmount - amount == 0, 
+                "Must maintain minimum stake or withdraw fully");
         miner.stakeAmount -= amount;
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Withdrawal failed");
     }
     
     // ============================================================
-    // PROOF SUBMISSION & CHALLENGE
+    // PROOF SUBMISSION
     // ============================================================
     
-    function submitProof(bytes32 proofHash) external returns (bytes32) {
+    function submitProof(bytes32 proofHash) external whenNotPaused returns (bytes32) {
         MinerInfo storage miner = miners[msg.sender];
         require(!miner.isBanned, "Miner is banned");
         require(miner.stakeAmount >= getMinimumStake(), "Insufficient stake");
-        
         bytes32 submissionId = keccak256(abi.encodePacked(msg.sender, proofHash, block.number));
-        
         emit ProofSubmitted(submissionId, msg.sender, proofHash);
         return submissionId;
     }
     
     // ============================================================
-    // PUNISHMENT SYSTEM
+    // PUNISHMENT
     // ============================================================
     
     function penalizeMiner(address minerAddress, string calldata reason) external {
         MinerInfo storage miner = miners[minerAddress];
         require(miner.stakeAmount > 0, "No stake to slash");
-        
         uint256 offenseCount = offenseHistory[minerAddress].length;
         uint256 slashPercent;
         
         if (offenseCount == 0) {
-            // First offense: 50% slash
             slashPercent = 50;
         } else if (offenseCount == 1) {
-            // Second offense: 100% slash + 30-day ban
             slashPercent = 100;
             miner.isBanned = true;
             emit MinerBanned(minerAddress);
         } else {
-            // Third offense: permanent ban (already handled)
             miner.isBanned = true;
             slashPercent = 100;
             emit MinerBanned(minerAddress);
@@ -166,7 +183,7 @@ contract Verifier {
         
         uint256 slashAmount = (miner.stakeAmount * slashPercent) / 100;
         miner.stakeAmount -= slashAmount;
-        miner.reputation -= int256(int8(REPUTATION_PENALTY));
+        miner.reputation -= int256(REPUTATION_PENALTY);
         miner.lastOffenseTimestamp = block.timestamp;
         miner.consecutiveHonestDays = 0;
         miner.restorationStartDay = 0;
@@ -177,10 +194,8 @@ contract Verifier {
             reason: reason
         }));
         
-        // Burn 50% of slashed amount, keep 50% in contract
         uint256 burnAmount = slashAmount / 2;
         payable(address(0x000000000000000000000000000000000000dEaD)).transfer(burnAmount);
-        
         emit MinerPenalized(minerAddress, slashAmount, miner.reputation, reason);
     }
     
@@ -190,39 +205,29 @@ contract Verifier {
     
     function recordHonestDay(address minerAddress) external {
         MinerInfo storage miner = miners[minerAddress];
-        require(miner.lastOffenseTimestamp > 0, "No offenses to recover from");
+        require(miner.lastOffenseTimestamp > 0, "No offenses");
         require(!miner.isBanned, "Miner is banned");
         
         uint256 daysSinceOffense = (block.timestamp - miner.lastOffenseTimestamp) / 86400;
         
-        // 30-day waiting period before restoration begins
         if (daysSinceOffense >= RESTORATION_WAIT_DAYS) {
             if (miner.restorationStartDay == 0) {
                 miner.restorationStartDay = block.timestamp;
             }
-            
             uint256 daysRestoring = (block.timestamp - miner.restorationStartDay) / 86400;
-            uint256 daysSinceLastRecord = (block.timestamp - miner.lastOffenseTimestamp) / 86400;
-            
-            if (daysSinceLastRecord > miner.consecutiveHonestDays) {
-                miner.consecutiveHonestDays = daysSinceLastRecord;
-                
-                // Calculate restoration: +1 every 30 days, up to +10 over 365 days
+            if (daysSinceOffense > miner.consecutiveHonestDays) {
+                miner.consecutiveHonestDays = daysSinceOffense;
                 if (daysRestoring >= 30 && daysRestoring < 60 && miner.reputation < -9) {
                     miner.reputation = -9;
                     emit ReputationRestored(minerAddress, miner.reputation, miner.consecutiveHonestDays);
                 } else if (daysRestoring >= 60 && daysRestoring < 90 && miner.reputation < -8) {
                     miner.reputation = -8;
-                    emit ReputationRestored(minerAddress, miner.reputation, miner.consecutiveHonestDays);
                 } else if (daysRestoring >= 90 && daysRestoring < 180 && miner.reputation < -7) {
                     miner.reputation = -7;
-                    emit ReputationRestored(minerAddress, miner.reputation, miner.consecutiveHonestDays);
                 } else if (daysRestoring >= 180 && daysRestoring < 270 && miner.reputation < -5) {
                     miner.reputation = -5;
-                    emit ReputationRestored(minerAddress, miner.reputation, miner.consecutiveHonestDays);
                 } else if (daysRestoring >= 270 && daysRestoring < 365 && miner.reputation < -3) {
                     miner.reputation = -3;
-                    emit ReputationRestored(minerAddress, miner.reputation, miner.consecutiveHonestDays);
                 } else if (daysRestoring >= 365 && miner.reputation < 0) {
                     miner.reputation = 0;
                     miner.lastOffenseTimestamp = 0;
@@ -234,7 +239,7 @@ contract Verifier {
     }
     
     // ============================================================
-    // PUBLIC VIEWS
+    // VIEWS
     // ============================================================
     
     function getMinerReputation(address minerAddress) external view returns (int256) {
@@ -268,14 +273,12 @@ contract Verifier {
         MinerInfo storage miner = miners[minerAddress];
         uint256 daysSinceOffense = 0;
         uint256 daysUntil = 0;
-        
         if (miner.lastOffenseTimestamp > 0) {
             daysSinceOffense = (block.timestamp - miner.lastOffenseTimestamp) / 86400;
             if (daysSinceOffense < RESTORATION_WAIT_DAYS) {
                 daysUntil = RESTORATION_WAIT_DAYS - daysSinceOffense;
             }
         }
-        
         return (
             miner.stakeAmount,
             miner.reputation,
@@ -285,4 +288,4 @@ contract Verifier {
             daysUntil
         );
     }
-}
+} 

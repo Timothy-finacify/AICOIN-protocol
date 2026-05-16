@@ -9,6 +9,7 @@ interface IAICoinToken {
 contract AgentWallet {
     address public owner;
     address public aicoinToken;
+    string public constant VERSION = "1.0.0";
     
     struct AgentConfig {
         uint256 balance;
@@ -28,10 +29,12 @@ contract AgentWallet {
     event AgentRefilled(address indexed agent, uint256 amount, uint256 newBalance);
     event AgentDeactivated(address indexed agent);
     event AgentActivated(address indexed agent);
+    event VersionDeployed(string version, uint256 timestamp);
     
     constructor(address _aicoinToken) {
         owner = msg.sender;
         aicoinToken = _aicoinToken;
+        emit VersionDeployed(VERSION, block.timestamp);
     }
     
     function createAgent(address agentWallet, uint256 _minBalance, uint256 _refillAmount) external {
@@ -110,4 +113,4 @@ contract AgentWallet {
     function getBusinessAgents(address business) external view returns (address[] memory) {
         return businessAgents[business];
     }
-} 
+}
