@@ -17,9 +17,33 @@ mining_active = False
 current_wallet = ""
 hash_rate = 0
 
+def run_miner(wallet, iterations):
+    global miner_process, mining_active, hash_rate
+    
+    miner_path = os.path.join(os.path.dirname(__file__), "miner.py")
+    
+    print(f"[SERVER] Starting miner: wallet={wallet}, iterations={iterations}")
+    print(f"[SERVER] Miner path: {miner_path}")
+    
+    try:
+        mining_active = True
+        miner_process = subprocess.Popen(
+            ["python", miner_path, wallet, str(iterations)],
+            stdout=None,
+            stderr=None,
+            shell=False
+        )
+        print(f"[SERVER] Miner process started with PID: {miner_process.pid}")
+        miner_process.wait()
+        print(f"[SERVER] Miner process finished")
+    except Exception as e:
+        print(f"[SERVER] ERROR: {e}")
+    finally:
+        mining_active = False
+        miner_process = None 
 @app.route("/start", methods=["POST"])
 def start_mining():
-    global miner_process, mining_active, current_wallet
+    global mining_active, current_wallet
     
     if mining_active:
         return jsonify({"status": "already running", "wallet": current_wallet})
@@ -30,25 +54,8 @@ def start_mining():
     
     current_wallet = wallet
     
-    miner_path = os.path.join(os.path.dirname(__file__), "miner.py")
-    
-    def run_miner():
-        global miner_process, mining_active, hash_rate
-        mining_active = True
-        miner_process = subprocess.Popen(
-            ["python", miner_path, wallet, str(iterations)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        stdout, stderr = miner_process.communicate()
-        mining_active = False
-        miner_process = None
-        print(stdout)
-        if stderr:
-            print(stderr)
-    
-    thread = threading.Thread(target=run_miner)
+    thread = threading.Thread(target=run_miner, args=(wallet, iterations))
+    thread.daemon = True
     thread.start()
     
     return jsonify({
@@ -78,4 +85,4 @@ def get_status():
     })
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=False) 
+    app.run(port=5000, debug=False)

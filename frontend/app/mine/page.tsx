@@ -57,10 +57,15 @@ export default function MinePage() {
       setIsMining(false);
       setHashRate(0);
     } else {
+      await fetch("http://localhost:5000/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: address, iterations: 100 })
+      });
       setIsMining(true);
       setHashRate(gpuList[selectedGPU].hashRate);
     }
-  };
+  }; 
 
   const reputationColor = minerStatus ? 
     minerStatus.reputation > 0 ? "text-success" :

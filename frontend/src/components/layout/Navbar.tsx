@@ -10,6 +10,7 @@ import {
   Search,
   Building2,
   Pickaxe,
+  Bot,
   LogOut, 
   X, 
   ChevronDown,
@@ -72,6 +73,10 @@ export function Navbar() {
           <Link href="/mine" className="navbar-link">
             <Pickaxe className="navbar-link-icon" />
             <span>Mine</span>
+          </Link>
+          <Link href="/agents" className="navbar-link">
+            <Bot className="navbar-link-icon" />
+            <span>Agents</span>
           </Link>
           <Link href="/register" className="navbar-link">
             <Building2 className="navbar-link-icon" />

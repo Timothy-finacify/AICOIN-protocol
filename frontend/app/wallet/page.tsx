@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useAccount, useTransactionCount, useChainId } from "wagmi";
 import { useState } from "react";
@@ -19,12 +19,13 @@ export default function WalletPage() {
   const { data: txCount } = useTransactionCount({ address });
   const { transfer, hash: txHash, isPending, isSuccess } = useTransferAIC();
   const { approveSession, isPending: isApproving } = useSessionApproval();
-  const SESSION_ADDRESS = "0x0a977Bb368b66dC8B5b35D2db560071f753803e5";
+  const SESSION_ADDRESS = "0x0eE581E42c51EFD224D7C6f26fB148332B5e8571";
 
   const [sendAddress, setSendAddress] = useState("");
   const [sendAmount, setSendAmount] = useState("");
   const [activeTab, setActiveTab] = useState<"balance" | "send" | "receive">("balance");
   const [copied, setCopied] = useState(false);
+  const [sessionAmount, setSessionAmount] = useState("100");
 
   const copyAddress = () => {
     if (address) { navigator.clipboard.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 2000); }
@@ -87,15 +88,57 @@ export default function WalletPage() {
         </div>
       </div>
 
+      {/* Instant Payments - User Sets Their Own Limit */}
       <div className="feature-card mb-6">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           <Zap className="w-5 h-5 text-accent" />
-          <h3 className="section-title">Instant Payments</h3>
+          <h3 className="section-title">Instant AI Payments</h3>
         </div>
-        <p className="text-sm text-muted mb-3">Approve once. All AI requests auto-process without MetaMask popups.</p>
-        <button onClick={() => approveSession(SESSION_ADDRESS, parseUnits("100", 9))} disabled={isApproving} className="send-btn">
-          {isApproving ? "Approving..." : "Enable Instant AI Payments (100 AIC/day)"}
-        </button>
+        <p className="text-sm text-muted mb-4">
+          Approve once. All AI requests and agent calls auto-process without MetaMask popups.
+          Only the AIC in your wallet is spendable. Payments stop when your wallet is empty.
+          You control the daily limit.
+        </p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <input 
+              type="number" 
+              value={sessionAmount}
+              onChange={(e) => setSessionAmount(e.target.value)}
+              placeholder="500"
+              min="1"
+              className="send-input w-32"
+            />
+            <span className="text-sm text-muted">AIC/day limit (you choose)</span>
+          </div>
+          <button 
+            onClick={() => approveSession(SESSION_ADDRESS, parseUnits(sessionAmount || "100", 9))}
+            disabled={isApproving}
+            className="send-btn"
+          >
+            {isApproving ? "Approving..." : `Enable (${sessionAmount || "100"} AIC/day)`}
+          </button>
+          <div className="flex items-start gap-2 mt-2">
+            <div className="w-4 h-4 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" 
+                 style={{ backgroundColor: "rgba(0, 255, 136, 0.15)" }}>
+              <CheckCircle2 className="w-3 h-3 text-success" />
+            </div>
+            <p className="text-xs text-muted">
+              <span className="text-success font-medium">No waiting.</span> Agents can make hundreds of calls simultaneously. 
+              Transactions process as fast as the blockchain allows. You only interact with MetaMask ONCE during setup.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-4 h-4 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" 
+                 style={{ backgroundColor: "rgba(0, 255, 136, 0.15)" }}>
+              <CheckCircle2 className="w-3 h-3 text-success" />
+            </div>
+            <p className="text-xs text-muted">
+              <span className="text-success font-medium">Wallet-gated.</span> Payments automatically stop when your AIC balance hits zero. 
+              No overdraft. No debt. You're always in control.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="tab-container">
@@ -141,7 +184,8 @@ export default function WalletPage() {
           </div>
         </div>
       )}
-            <div className="feature-card mt-8">
+
+      <div className="feature-card mt-8">
         <div className="flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-muted" /><h2 className="section-title">Transaction History</h2></div>
         <div className="tx-empty"><p className="tx-empty-title">No transactions yet</p></div>
       </div>
