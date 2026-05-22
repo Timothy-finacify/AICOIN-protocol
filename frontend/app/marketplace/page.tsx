@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useAccount } from "wagmi";
 import { useState } from "react";
@@ -12,11 +12,17 @@ import {
   Send,
   X,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Hash
 } from "lucide-react";
 import { getCompanies, getCategories, AICompany } from "@/lib/companyStore";
 import { useRoutePayment } from "@/hooks/useContracts";
-import { parseUnits } from "viem";
+
+// Token counter helper
+const countTokens = (text: string): number => {
+  if (!text.trim()) return 0;
+  return text.split(/\s+/).filter(w => w.length > 0).length;
+};
 
 export default function MarketplacePage() {
   const { isConnected } = useAccount();
@@ -54,18 +60,25 @@ export default function MarketplacePage() {
   const handleSubmitRequest = async () => {
     if (!userPrompt.trim() || !selectedCompany) return;
     setIsProcessing(true);
-    const amountInNano = parseUnits(selectedCompany.price.toString(), 9);
-    pay(selectedCompany.walletAddress, amountInNano);
-    setTimeout(() => {
-      const mockResponses: Record<string, string> = {
-        "SwahiliMed AI": "Based on the symptoms described, the likely diagnosis is seasonal malaria. Recommended treatment: Artemether-Lumefantrine.",
-        "FarmSense Africa": "The leaf pattern indicates early-stage maize rust. Apply fungicide within 48 hours.",
-        "LegalMind India": "Under Section 420 of the IPC, this constitutes cheating. Limitation period: 3 years.",
-        "EduTutor AI": "Let me break this down step by step. First, isolate the variable. The answer is x = 4.",
-      };
-      setAiResponse(mockResponses[selectedCompany.name] || "Your request has been processed and paid via AICOIN PaymentRouter.");
-      setIsProcessing(false);
-    }, 2000);
+    
+    const tokens = countTokens(userPrompt);
+    const totalCost = tokens * selectedCompany.price;
+    const burnAmount = totalCost * 0.2;
+    const treasuryAmount = totalCost * 0.011;
+    const validatorAmount = totalCost * 0.004;
+    const companyAmount = totalCost * 0.785;
+    
+    setAiResponse(
+      `Request sent to AICOIN network.\n\n` +
+      `Tokens: ${tokens}\n` +
+      `Total cost: ${totalCost.toFixed(4)} AIC\n` +
+      `Company earns: ${companyAmount.toFixed(4)} AIC (78.5%)\n` +
+      `Burned forever: ${burnAmount.toFixed(4)} AIC (20%)\n` +
+      `Treasury: ${treasuryAmount.toFixed(4)} AIC (1.1%)\n` +
+      `Validator: ${validatorAmount.toFixed(4)} AIC (0.4%)\n\n` +
+      `Waiting for miner to process...`
+    );
+    setIsProcessing(false);
   };
 
   return (
@@ -73,7 +86,7 @@ export default function MarketplacePage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">AI Marketplace</h1>
-          <p className="page-subtitle">Browse and use AI services from registered companies worldwide</p>
+          <p className="page-subtitle">Browse and use AI services — pay per token, not per request</p>
         </div>
       </div>
 
@@ -117,7 +130,7 @@ export default function MarketplacePage() {
             </div>
             <div className="company-stats-single">
               <div className="company-stat">
-                <span className="company-stat-label">Price per Request</span>
+                <span className="company-stat-label">Price per Token</span>
                 <span className="company-stat-value price">{company.price} AIC</span>
               </div>
             </div>
@@ -142,33 +155,112 @@ export default function MarketplacePage() {
             <div className="modal-header">
               <div>
                 <h2 className="modal-title">{selectedCompany.name}</h2>
-                <p className="text-xs text-muted">{selectedCompany.price} AIC per request • {selectedCompany.verified ? "Verified" : "Unverified"}</p>
+                <p className="text-xs text-muted">
+                  {selectedCompany.price} AIC per token • {selectedCompany.verified ? "Verified" : "Unverified"}
+                </p>
               </div>
               <button onClick={() => setSelectedCompany(null)} className="wallet-dropdown-close"><X className="w-4 h-4" /></button>
             </div>
             <div className="modal-body">
               <label className="form-label">Your AI Request</label>
-              <textarea value={userPrompt} onChange={(e) => setUserPrompt(e.target.value)} placeholder="Type your question or prompt here..." className="send-input" rows={4} disabled={isProcessing || isPaying} />
+              <textarea 
+                value={userPrompt} 
+                onChange={(e) => setUserPrompt(e.target.value)} 
+                placeholder="Type your question or prompt here... cost updates in real-time as you type" 
+                className="send-input" 
+                rows={4} 
+                disabled={isProcessing || isPaying} 
+              />
+              
+              {/* Real-time Token Counter */}
               {userPrompt && (
-                <div className="cost-display">
-                  <div className="cost-row"><span className="text-muted text-sm">Cost:</span><span className="text-white font-mono text-sm">{selectedCompany.price} AIC</span></div>
-                  <div className="cost-row"><span className="text-muted text-sm">Burned (20%):</span><span className="text-danger font-mono text-sm">{(selectedCompany.price * 0.2).toFixed(4)} AIC</span></div>
-                  <div className="cost-row"><span className="text-muted text-sm">Treasury (0.34%):</span><span className="text-blue font-mono text-sm">{(selectedCompany.price * 0.0034).toFixed(4)} AIC</span></div>
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3 h-3 text-accent" />
+                    <span className="text-muted">
+                      Tokens: <span className="text-white font-mono">{countTokens(userPrompt)}</span>
+                    </span>
+                  </div>
+                  <span className="text-accent font-mono font-semibold">
+                    Cost: {(countTokens(userPrompt) * selectedCompany.price).toFixed(4)} AIC
+                  </span>
                 </div>
               )}
+
+              {/* Cost Breakdown */}
+              {userPrompt && (
+                <div className="cost-display mt-3">
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Tokens detected</span>
+                    <span className="text-white font-mono text-sm">{countTokens(userPrompt)}</span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Price per token</span>
+                    <span className="text-white font-mono text-sm">{selectedCompany.price} AIC</span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Total cost</span>
+                    <span className="text-accent font-mono text-sm font-semibold">
+                      {(countTokens(userPrompt) * selectedCompany.price).toFixed(4)} AIC
+                    </span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Company earns (78.5%)</span>
+                    <span className="text-success font-mono text-sm">
+                      {(countTokens(userPrompt) * selectedCompany.price * 0.785).toFixed(4)} AIC
+                    </span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Burned forever (20%)</span>
+                    <span className="text-danger font-mono text-sm">
+                      {(countTokens(userPrompt) * selectedCompany.price * 0.2).toFixed(4)} AIC
+                    </span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Treasury (1.1%)</span>
+                    <span className="text-blue font-mono text-sm">
+                      {(countTokens(userPrompt) * selectedCompany.price * 0.011).toFixed(6)} AIC
+                    </span>
+                  </div>
+                  <div className="cost-row">
+                    <span className="text-muted text-sm">Validator (0.4%)</span>
+                    <span className="text-purple font-mono text-sm">
+                      {(countTokens(userPrompt) * selectedCompany.price * 0.004).toFixed(6)} AIC
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Response */}
               {aiResponse && (
-                <div className="ai-response">
-                  <div className="flex items-center gap-2 mb-2"><MessageSquare className="w-4 h-4 text-accent" /><span className="text-sm font-semibold text-white">Response from {selectedCompany.name}</span></div>
-                  <p className="text-sm text-white leading-relaxed">{aiResponse}</p>
+                <div className="ai-response mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-4 h-4 text-accent" />
+                    <span className="text-sm font-semibold text-white">Request Summary</span>
+                  </div>
+                  <pre className="text-sm text-white leading-relaxed whitespace-pre-wrap font-sans">{aiResponse}</pre>
                 </div>
               )}
             </div>
             <div className="modal-footer">
               {!aiResponse ? (
-                <button onClick={handleSubmitRequest} disabled={!userPrompt.trim() || isProcessing || isPaying} className="send-btn flex items-center justify-center gap-2">
-                  {isPaying ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Confirm in MetaMask...</span></>) :
-                   isProcessing ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Processing...</span></>) :
-                   (<><Send className="w-4 h-4" /><span>Pay {selectedCompany.price} AIC & Send</span></>)}
+                <button 
+                  onClick={handleSubmitRequest} 
+                  disabled={!userPrompt.trim() || isProcessing || isPaying} 
+                  className="send-btn flex items-center justify-center gap-2"
+                >
+                  {isPaying ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /><span>Confirm in MetaMask...</span></>
+                  ) : isProcessing ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /><span>Processing...</span></>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>
+                        Pay {(countTokens(userPrompt) * selectedCompany.price).toFixed(4)} AIC & Send
+                      </span>
+                    </>
+                  )}
                 </button>
               ) : (
                 <button onClick={() => { setSelectedCompany(null); setAiResponse(""); setUserPrompt(""); }} className="send-btn">Done</button>
@@ -179,4 +271,4 @@ export default function MarketplacePage() {
       )}
     </div>
   );
-}
+} 

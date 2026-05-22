@@ -1,37 +1,67 @@
- "use client";
+"use client";
 
-import { useAccount } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import { useState } from "react";
-import { addCompany } from "@/lib/companyStore";
-
 import { 
   Building2, CheckCircle2, Shield, Globe, Upload, AlertCircle, X,
-  Cpu, Key, Zap, FileText, ChevronLeft, ChevronRight, Check
+  Cpu, Key, Zap, FileText, ChevronLeft, ChevronRight, Check, Server,
+  HardDrive, Layers
 } from "lucide-react";
+import { addCompany } from "@/lib/companyStore";
+import { COMPANY_REGISTRY_ADDRESS, MODEL_REGISTRY_ADDRESS } from "@/lib/contracts";
+import { sepolia } from "wagmi/chains";
+import { parseUnits } from "viem";
 
-const STEPS = ["Identity", "Wallet", "Model", "Capabilities", "Pricing", "Review"];
+const STEPS = ["Identity", "Wallet", "Model Specs", "Capabilities", "Pricing", "Review"];
+
+const MODEL_REGISTRY_ABI = [
+  {
+    name: "registerModel",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "name", type: "string" },
+      { name: "ipfsHash", type: "string" },
+      { name: "minTier", type: "uint8" },
+      { name: "minMemoryMB", type: "uint256" },
+      { name: "pricePerRequest", type: "uint256" },
+    ],
+    outputs: [{ type: "bytes32" }],
+  },
+] as const;
 
 export default function RegisterPage() {
   const { address, isConnected } = useAccount();
+  const { writeContract, isPending: isRegistering } = useWriteContract();
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
+  // Step 1: Identity
   const [companyName, setCompanyName] = useState("");
   const [country, setCountry] = useState("");
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("");
   const [yearFounded, setYearFounded] = useState("");
+
+  // Step 3: Model Specs
   const [modelName, setModelName] = useState("");
   const [modelArchitecture, setModelArchitecture] = useState("");
-  const [modelSize, setModelSize] = useState("");
-  const [inferenceSpeed, setInferenceSpeed] = useState("");
+  const [modelParameters, setModelParameters] = useState("");
+  const [ipfsHash, setIpfsHash] = useState("");
+  const [minTier, setMinTier] = useState(1);
+  const [minMemoryMB, setMinMemoryMB] = useState("");
+  const [inferenceSpeedMs, setInferenceSpeedMs] = useState("");
   const [inputFormats, setInputFormats] = useState<string[]>([]);
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
+
+  // Step 4: Capabilities
   const [description, setDescription] = useState("");
   const [useCases, setUseCases] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
+
+  // Step 5: Pricing
   const [pricePerRequest, setPricePerRequest] = useState("");
   const [agentCompatible, setAgentCompatible] = useState(false);
   const [maxAgents, setMaxAgents] = useState("");
@@ -44,7 +74,7 @@ export default function RegisterPage() {
             <div className="auth-icon-circle"><Building2 className="auth-icon" /></div>
           </div>
           <h2 className="auth-title">Connect Your Wallet</h2>
-          <p className="text-center mb-6 text-muted">Connect your wallet to register your AI company.</p>
+          <p className="text-center mb-6 text-muted">Connect your wallet to register your AI company and models.</p>
         </div>
       </div>
     );
@@ -59,41 +89,48 @@ export default function RegisterPage() {
               <CheckCircle2 className="w-10 h-10 text-success" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Registration Submitted</h2>
-          <p className="text-muted mb-2">{companyName} has been registered on AICOIN.</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Registration Complete</h2>
+          <p className="text-muted mb-2">{companyName} has been registered with model {modelName}.</p>
           <p className="text-sm text-muted mb-6">Wallet: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
-          <div className="p-3 rounded-lg mb-4" style={{ backgroundColor: "var(--color-tensor-dark)", border: "1px solid var(--color-stable-gray)" }}>
-            <code className="text-xs text-accent break-all" style={{ fontFamily: "monospace" }}>
-              cast send 0xC233...e6bD "register(string,bytes32)" "{companyName}" 0x000000000000000000000000{address?.slice(2)}
-            </code>
-          </div>
           <button onClick={() => { setSubmitted(false); setStep(0); }} className="btn-secondary">Register Another</button>
         </div>
       </div>
     );
   }
 
-
-
-const handleSubmit = () => {
+  const handleSubmit = () => {
     setError("");
     if (!companyName) { setError("Company name is required."); return; }
-    
-    const result = addCompany({
+    if (!modelName) { setError("Model name is required."); return; }
+
+    // Submit model to ModelRegistry on-chain
+    writeContract({
+      address: MODEL_REGISTRY_ADDRESS as `0x${string}`,
+      abi: MODEL_REGISTRY_ABI,
+      functionName: "registerModel",
+      args: [
+        modelName,
+        ipfsHash || `ipfs://placeholder-${Date.now()}`,
+        minTier,
+        BigInt(minMemoryMB || "1024"),
+        parseUnits(pricePerRequest || "0.01", 9),
+      ],
+      chain: sepolia,
+      account: address,
+    });
+
+    // Also save locally
+    addCompany({
       name: companyName,
-      description: description || "AI service provider",
+      description: description || `${modelName} — ${modelArchitecture} model`,
       price: Number(pricePerRequest) || 0.01,
       category: useCases.length > 0 ? useCases[0] : "General",
       languages: languages.length > 0 ? languages : ["English"],
       walletAddress: address || "",
     });
-    
-    if (result.success) {
-      setSubmitted(true);
-    } else {
-      setError(result.error || "Registration failed.");
-    }
-}; 
+
+    setSubmitted(true);
+  };
 
   const toggleArrayItem = (arr: string[], setter: (a: string[]) => void, item: string) => {
     if (arr.includes(item)) setter(arr.filter(i => i !== item));
@@ -104,16 +141,23 @@ const handleSubmit = () => {
   const useCaseOptions = ["Medical", "Legal", "Education", "Finance", "Agriculture", "Customer Support", "Code Generation", "Translation", "General"];
   const languageOptions = ["English", "Swahili", "Hindi", "French", "Arabic", "Bengali", "Tamil", "Telugu", "Spanish", "Chinese"];
   const regionOptions = ["Africa", "South Asia", "Southeast Asia", "Middle East", "Europe", "North America", "Latin America", "Global"];
+  const tierOptions = [
+    { value: 0, label: "Mobile / CPU", desc: "Phones, basic laptops" },
+    { value: 1, label: "Consumer GPU", desc: "RTX 3060+, RX 6800+" },
+    { value: 2, label: "Data Center", desc: "H100, A100, Servers" },
+  ];
+  const architectureOptions = ["Transformer", "CNN", "RNN/LSTM", "Hybrid", "Diffusion", "Other"];
 
   return (
     <div className="page-container max-w-3xl mx-auto px-4">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Register AI Company</h1>
+          <h1 className="page-title">Register AI Company & Model</h1>
           <p className="page-subtitle">Step {step + 1} of {STEPS.length}: {STEPS[step]}</p>
         </div>
       </div>
 
+      {/* Progress Bar */}
       <div className="progress-bar mb-8">
         {STEPS.map((s, i) => (
           <div key={s} className={`progress-step ${i <= step ? 'progress-step-done' : ''}`}>
@@ -130,6 +174,7 @@ const handleSubmit = () => {
         </div>
       )}
 
+      {/* STEP 1: IDENTITY */}
       {step === 0 && (
         <div className="feature-card mb-6">
           <div className="flex items-center gap-3 mb-4"><Building2 className="w-5 h-5 text-accent" /><h2 className="section-title">Company Identity</h2></div>
@@ -145,9 +190,10 @@ const handleSubmit = () => {
         </div>
       )}
 
+      {/* STEP 2: WALLET */}
       {step === 1 && (
         <div className="feature-card mb-6">
-          <div className="flex items-center gap-3 mb-4"><Key className="w-5 h-5 text-accent" /><h2 className="section-title">Wallet & Cryptographic Identity</h2></div>
+          <div className="flex items-center gap-3 mb-4"><Key className="w-5 h-5 text-accent" /><h2 className="section-title">Wallet & Identity</h2></div>
           <div className="space-y-4">
             <div>
               <label className="form-label">Primary Wallet Address</label>
@@ -159,7 +205,7 @@ const handleSubmit = () => {
                 <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "var(--color-neural-purple)" }} />
                 <div>
                   <p className="text-sm font-medium text-white mb-1">How Identity Works</p>
-                  <p className="text-xs text-muted">Your wallet address IS your identity. AI outputs are signed with your wallet's private key. Users verify the signature against this address. No separate public key needed. No passwords. No databases.</p>
+                  <p className="text-xs text-muted">Your wallet address IS your identity. AI outputs are signed with your wallet's private key. Users verify the signature against this address. No passwords. No databases.</p>
                 </div>
               </div>
             </div>
@@ -167,24 +213,48 @@ const handleSubmit = () => {
         </div>
       )}
 
+      {/* STEP 3: MODEL SPECS */}
       {step === 2 && (
         <div className="feature-card mb-6">
-          <div className="flex items-center gap-3 mb-4"><Cpu className="w-5 h-5 text-accent" /><h2 className="section-title">Model Specifications</h2></div>
+          <div className="flex items-center gap-3 mb-4"><Layers className="w-5 h-5 text-accent" /><h2 className="section-title">Model Specifications</h2></div>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="form-label">Model Name</label><input type="text" value={modelName} onChange={(e) => setModelName(e.target.value)} placeholder="e.g., SwahiliMed-v2" className="send-input" /></div>
-              <div><label className="form-label">Architecture</label><select value={modelArchitecture} onChange={(e) => setModelArchitecture(e.target.value)} className="send-input"><option value="">Select...</option><option>Transformer</option><option>CNN</option><option>RNN/LSTM</option><option>Hybrid</option><option>Other</option></select></div>
+              <div><label className="form-label">Model Name *</label><input type="text" value={modelName} onChange={(e) => setModelName(e.target.value)} placeholder="e.g., SwahiliMed-v2" className="send-input" /></div>
+              <div><label className="form-label">Architecture</label><select value={modelArchitecture} onChange={(e) => setModelArchitecture(e.target.value)} className="send-input"><option value="">Select...</option>{architectureOptions.map(a => <option key={a}>{a}</option>)}</select></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="form-label">Parameters</label><input type="text" value={modelSize} onChange={(e) => setModelSize(e.target.value)} placeholder="e.g., 7B" className="send-input" /></div>
-              <div><label className="form-label">Inference Speed (ms)</label><input type="text" value={inferenceSpeed} onChange={(e) => setInferenceSpeed(e.target.value)} placeholder="e.g., 200" className="send-input" /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="form-label">Parameters</label><input type="text" value={modelParameters} onChange={(e) => setModelParameters(e.target.value)} placeholder="e.g., 7B" className="send-input" /></div>
+              <div><label className="form-label">VRAM Required (MB)</label><input type="number" value={minMemoryMB} onChange={(e) => setMinMemoryMB(e.target.value)} placeholder="1024" className="send-input" /></div>
+              <div><label className="form-label">Speed (ms)</label><input type="text" value={inferenceSpeedMs} onChange={(e) => setInferenceSpeedMs(e.target.value)} placeholder="e.g., 200" className="send-input" /></div>
             </div>
+            <div><label className="form-label">IPFS Hash (Model File)</label><input type="text" value={ipfsHash} onChange={(e) => setIpfsHash(e.target.value)} placeholder="Qm..." className="send-input font-mono text-xs" /><p className="text-xs text-muted mt-1">Upload model to IPFS and paste the content hash here.</p></div>
+            
+            {/* Hardware Tier Selection */}
+            <div>
+              <label className="form-label">Minimum Hardware Tier</label>
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                {tierOptions.map((tier) => (
+                  <button key={tier.value} onClick={() => setMinTier(tier.value)} className={`p-3 rounded-xl text-center transition-all ${
+                    minTier === tier.value ? "border-2" : "border border-gray-700"
+                  }`} style={{
+                    backgroundColor: minTier === tier.value ? "rgba(0,212,170,0.08)" : "var(--color-tensor-dark)",
+                    borderColor: minTier === tier.value ? "var(--color-node-teal)" : "var(--color-stable-gray)"
+                  }}>
+                    <HardDrive className="w-6 h-6 mx-auto mb-1 text-accent" />
+                    <div className="text-xs font-semibold text-white">{tier.label}</div>
+                    <div className="text-xs text-muted mt-0.5">{tier.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div><label className="form-label">Input Formats</label><div className="flex flex-wrap gap-2 mt-2">{formatOptions.map(f => (<button key={f} onClick={() => toggleArrayItem(inputFormats, setInputFormats, f)} className={inputFormats.includes(f) ? "filter-tag filter-tag-active" : "filter-tag"}>{f}</button>))}</div></div>
             <div><label className="form-label">Output Formats</label><div className="flex flex-wrap gap-2 mt-2">{formatOptions.map(f => (<button key={f} onClick={() => toggleArrayItem(outputFormats, setOutputFormats, f)} className={outputFormats.includes(f) ? "filter-tag filter-tag-active" : "filter-tag"}>{f}</button>))}</div></div>
           </div>
         </div>
       )}
 
+      {/* STEP 4: CAPABILITIES */}
       {step === 3 && (
         <div className="feature-card mb-6">
           <div className="flex items-center gap-3 mb-4"><Globe className="w-5 h-5 text-accent" /><h2 className="section-title">Capabilities & Languages</h2></div>
@@ -197,6 +267,7 @@ const handleSubmit = () => {
         </div>
       )}
 
+      {/* STEP 5: PRICING */}
       {step === 4 && (
         <div className="feature-card mb-6">
           <div className="flex items-center gap-3 mb-4"><Zap className="w-5 h-5 text-accent" /><h2 className="section-title">Pricing & Agent Configuration</h2></div>
@@ -205,6 +276,7 @@ const handleSubmit = () => {
             {pricePerRequest && Number(pricePerRequest) >= 0.001 && (
               <div className="p-3 rounded-lg" style={{ backgroundColor: "rgba(0, 212, 170, 0.05)", border: "1px solid rgba(0, 212, 170, 0.15)" }}>
                 <p className="text-sm text-accent font-medium mb-1">Revenue per Request: {(Number(pricePerRequest) * 0.785).toFixed(4)} AIC (78.5%)</p>
+                <p className="text-xs text-muted">Burned: {(Number(pricePerRequest) * 0.2).toFixed(4)} AIC (20%) | Treasury: {(Number(pricePerRequest) * 0.0034).toFixed(4)} AIC (0.34%)</p>
               </div>
             )}
             <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: "var(--color-tensor-dark)" }}>
@@ -216,6 +288,7 @@ const handleSubmit = () => {
         </div>
       )}
 
+      {/* STEP 6: REVIEW */}
       {step === 5 && (
         <div className="feature-card mb-6">
           <div className="flex items-center gap-3 mb-4"><FileText className="w-5 h-5 text-accent" /><h2 className="section-title">Review Your Registration</h2></div>
@@ -224,20 +297,28 @@ const handleSubmit = () => {
             <div className="flex justify-between"><span className="text-muted">Country</span><span className="text-white">{country || "—"}</span></div>
             <div className="flex justify-between"><span className="text-muted">Wallet</span><span className="text-white font-mono">{address?.slice(0, 10)}...{address?.slice(-6)}</span></div>
             <div className="flex justify-between"><span className="text-muted">Model</span><span className="text-white">{modelName || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Architecture</span><span className="text-white">{modelArchitecture || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Min Hardware</span><span className="text-accent">{tierOptions[minTier].label}</span></div>
+            <div className="flex justify-between"><span className="text-muted">VRAM Required</span><span className="text-white">{minMemoryMB ? `${minMemoryMB} MB` : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Use Cases</span><span className="text-white">{useCases.length > 0 ? useCases.join(", ") : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Languages</span><span className="text-white">{languages.length > 0 ? languages.join(", ") : "—"}</span></div>
             <div className="flex justify-between"><span className="text-muted">Price</span><span className="text-accent font-mono">{pricePerRequest || "—"} AIC</span></div>
-            <div className="flex justify-between"><span className="text-muted">Agent</span><span className="text-white">{agentCompatible ? "Yes" : "No"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Agent</span><span className="text-white">{agentCompatible ? `Yes (max ${maxAgents || "unlimited"})` : "No"}</span></div>
           </div>
         </div>
       )}
 
+      {/* Navigation Buttons */}
       <div className="flex justify-between gap-4">
         <button onClick={() => setStep(step - 1)} disabled={step === 0} className="btn-secondary flex items-center gap-2"><ChevronLeft className="w-4 h-4" /> Previous</button>
         {step < 5 ? (
           <button onClick={() => setStep(step + 1)} className="btn-primary flex items-center gap-2" style={{ width: "auto" }}>Next <ChevronRight className="w-4 h-4" /></button>
         ) : (
-          <button onClick={handleSubmit} className="btn-primary flex items-center gap-2" style={{ width: "auto" }}><Upload className="w-4 h-4" /> Submit Registration</button>
+          <button onClick={handleSubmit} disabled={isRegistering} className="btn-primary flex items-center gap-2" style={{ width: "auto" }}>
+            {isRegistering ? "Registering..." : <><Upload className="w-4 h-4" /> Submit Registration</>}
+          </button>
         )}
       </div>
     </div>
   );
-}
+} 

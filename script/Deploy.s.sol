@@ -20,7 +20,7 @@ contract DeployScript is Script {
         AICOIN token = new AICOIN();
         CompanyRegistry registry = new CompanyRegistry();
         Verifier verifier = new Verifier();
-        PaymentRouter router = new PaymentRouter(address(treasury), address(token));
+         PaymentRouter router = new PaymentRouter(address(treasury), 0x1279759F4716e8A3dCe2C18f6E2B9DE58f2A1998, address(token));
         
         vm.stopBroadcast();
         

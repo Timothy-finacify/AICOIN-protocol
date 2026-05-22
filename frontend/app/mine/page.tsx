@@ -1,9 +1,10 @@
-  "use client";
+"use client";
 
 import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
 import { 
-  Cpu, HardDrive, Zap, Timer, TrendingUp, Activity, CircleDot, Play, Square, RefreshCw, Shield, Star, AlertTriangle, Ban, Clock
+  Cpu, HardDrive, Zap, Activity, Play, Square, RefreshCw, 
+  Shield, Star, AlertTriangle, Ban, Clock, Server, Smartphone, Monitor
 } from "lucide-react";
 import { useMinerFullStatus } from "@/hooks/useAICOIN";
 
@@ -11,23 +12,33 @@ export default function MinePage() {
   const { address, isConnected } = useAccount();
   const minerStatus = useMinerFullStatus(address);
   const [isMining, setIsMining] = useState(false);
-  const [selectedGPU, setSelectedGPU] = useState(0);
   const [hashRate, setHashRate] = useState(0);
+  const [selectedTier, setSelectedTier] = useState(0);
+  const [taskCounts, setTaskCounts] = useState({ tier0: 0, tier1: 0, tier2: 0 });
+
+  const tierNames = ["Mobile / CPU", "Consumer GPU", "Data Center"];
+  const tierIcons = [Smartphone, Monitor, Server];
+  const tierColors = ["text-blue", "text-accent", "text-purple"];
+
+  const tierTasks: Record<number, string[]> = {
+    0: ["Proof Verification", "Data Validation", "Network Relay", "Preprocessing"],
+    1: ["Small Model Inference", "Proof Verification", "Data Validation", "Preprocessing"],
+    2: ["Large Model Inference", "Video Processing", "Agent Conversations", "All Tier 0 & 1 Tasks"],
+  };
 
   useEffect(() => {
-    if (isMining && minerStatus) {
-      const interval = setInterval(async () => {
-        try {
-          await fetch("http://localhost:5000/start", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ wallet: address, iterations: 50 })
-          });
-        } catch {}
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isMining, address]);
+    const checkStatus = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/status");
+        const data = await response.json();
+        if (data.mining_active) {
+          setIsMining(true);
+          setHashRate(15.4);
+        }
+      } catch {}
+    };
+    checkStatus();
+  }, []);
 
   if (!isConnected) {
     return (
@@ -43,42 +54,91 @@ export default function MinePage() {
     );
   }
 
-  const gpuList = [
-    { name: "NVIDIA RTX 3060", memory: "12GB", hashRate: 15.4, power: "170W" },
-    { name: "NVIDIA RTX 4070", memory: "12GB", hashRate: 24.8, power: "200W" },
-    { name: "AMD RX 6800", memory: "16GB", hashRate: 18.2, power: "250W" },
-    { name: "Apple M2 Pro", memory: "16GB", hashRate: 12.6, power: "30W" },
-    { name: "CPU Mining", memory: "System", hashRate: 2.1, power: "65W" },
-  ];
-
   const handleToggleMining = async () => {
     if (isMining) {
-      await fetch("http://localhost:5000/stop", { method: "POST" });
+      try { await fetch("http://localhost:5000/stop", { method: "POST" }); } catch {}
       setIsMining(false);
       setHashRate(0);
     } else {
-      await fetch("http://localhost:5000/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: address, iterations: 100 })
-      });
+      try {
+        await fetch("http://localhost:5000/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: address, iterations: 100, tier: selectedTier })
+        });
+      } catch {}
       setIsMining(true);
-      setHashRate(gpuList[selectedGPU].hashRate);
+      setHashRate(15.4);
     }
-  }; 
+  };
 
-  const reputationColor = minerStatus ? 
-    minerStatus.reputation > 0 ? "text-success" :
-    minerStatus.reputation < 0 ? "text-danger" : "text-blue" : "text-muted";
+  const TierIcon = tierIcons[selectedTier];
 
   return (
-    <div className="page-container max-w-5xl mx-auto px-4">
+    <div className="page-container max-w-6xl mx-auto px-4">
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Mining Dashboard</h1>
-          <p className="page-subtitle">Dynamic stake system — Verifier V2 on Sepolia</p>
+          <p className="page-subtitle">Tiered mining system — Every device earns AICOIN</p>
         </div>
         <button className="refresh-btn"><RefreshCw className="w-4 h-4 text-muted" /></button>
+      </div>
+
+      {/* Hardware Tier Selection */}
+      <div className="feature-card mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <HardDrive className="w-5 h-5 text-accent" />
+          <h2 className="section-title">Your Hardware Tier</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          {[0, 1, 2].map((tier) => {
+            const Icon = tierIcons[tier];
+            return (
+              <button
+                key={tier}
+                onClick={() => setSelectedTier(tier)}
+                className={`p-4 rounded-xl text-center transition-all ${
+                  selectedTier === tier 
+                    ? "border-2 border-accent bg-opacity-10" 
+                    : "border border-gray-700"
+                }`}
+                style={{
+                  backgroundColor: selectedTier === tier ? "rgba(0,212,170,0.08)" : "var(--color-tensor-dark)",
+                  borderColor: selectedTier === tier ? "var(--color-node-teal)" : "var(--color-stable-gray)"
+                }}
+              >
+                <Icon className={`w-8 h-8 mx-auto mb-2 ${tierColors[tier]}`} />
+                <div className="text-sm font-semibold text-white">{tierNames[tier]}</div>
+                <div className="text-xs text-muted mt-1">
+                  {tier === 0 ? "Phones, Basic Laptops" : tier === 1 ? "Gaming PCs, RTX 3060+" : "H100, A100, Servers"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tier Capabilities */}
+      <div className="feature-card mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <TierIcon className={`w-5 h-5 ${tierColors[selectedTier]}`} />
+          <h2 className="section-title">What {tierNames[selectedTier]} Can Mine</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {tierTasks[selectedTier].map((task) => (
+            <div key={task} className="p-3 rounded-lg text-center" style={{ backgroundColor: "var(--color-tensor-dark)", border: "1px solid var(--color-stable-gray)" }}>
+              <Zap className="w-4 h-4 mx-auto mb-1 text-accent" />
+              <span className="text-xs text-white font-medium">{task}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: "rgba(0,212,170,0.05)", border: "1px solid rgba(0,212,170,0.15)" }}>
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-accent" />
+            <span className="text-sm text-white font-medium">Reward: 10 AIC per valid proof — Same for all tiers</span>
+          </div>
+        </div>
       </div>
 
       {/* On-Chain Miner Status */}
@@ -90,113 +150,52 @@ export default function MinePage() {
         
         {minerStatus ? (
           <div className="space-y-4">
-            {/* Status Row */}
             <div className="grid grid-cols-3 gap-4">
               <div className="stat-card">
                 <span className="stat-label">Staked AIC</span>
                 <div className="stat-value text-accent">{minerStatus.stakeAmount.toLocaleString()}</div>
-                <div className="stat-unit">{minerStatus.stakeAmount > 0 ? "Ready to mine" : "Stake to start"}</div>
+                <div className="stat-unit">{minerStatus.stakeAmount > 0 ? "Ready" : "Stake to start"}</div>
               </div>
               <div className="stat-card">
                 <span className="stat-label">Reputation</span>
-                <div className={`stat-value ${reputationColor}`}>{minerStatus.reputation}</div>
-                <div className="stat-unit">
-                  {minerStatus.reputation < 0 ? "Penalized" : minerStatus.reputation > 0 ? "Positive" : "Neutral"}
+                <div className={`stat-value ${minerStatus.reputation < 0 ? 'text-danger' : 'text-blue'}`}>
+                  {minerStatus.reputation}
                 </div>
+                <div className="stat-unit">{minerStatus.reputation < 0 ? "Penalized" : "Neutral"}</div>
               </div>
               <div className="stat-card">
                 <span className="stat-label">Status</span>
                 <div className={`stat-value ${minerStatus.isBanned ? 'text-danger' : 'text-success'}`}>
                   {minerStatus.isBanned ? "BANNED" : "Active"}
                 </div>
-                <div className="stat-unit">Verifier V2</div>
+                <div className="stat-unit">Tier {selectedTier}</div>
               </div>
             </div>
 
-            {/* Offense & Recovery Row */}
             {minerStatus.offenseCount > 0 && (
-              <div className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255, 71, 87, 0.08)", border: "1px solid rgba(255, 71, 87, 0.2)" }}>
+              <div className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.2)" }}>
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-danger" />
                   <span className="text-sm font-semibold text-white">Offense Record</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted">Total Offenses:</span>
-                    <span className="text-white ml-2 font-semibold">{minerStatus.offenseCount}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted">Honest Days:</span>
-                    <span className="text-success ml-2 font-semibold">{minerStatus.honestDays}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted">Restoration in:</span>
-                    <span className="text-blue ml-2 font-semibold">
-                      {minerStatus.daysUntilRestoration > 0 ? `${minerStatus.daysUntilRestoration} days` : "Started"}
-                    </span>
-                  </div>
+                  <div><span className="text-muted">Offenses:</span> <span className="text-white font-semibold">{minerStatus.offenseCount}</span></div>
+                  <div><span className="text-muted">Honest Days:</span> <span className="text-success font-semibold">{minerStatus.honestDays}</span></div>
+                  <div><span className="text-muted">Restoration:</span> <span className="text-blue font-semibold">{minerStatus.daysUntilRestoration > 0 ? `${minerStatus.daysUntilRestoration}d` : "Active"}</span></div>
                 </div>
-                {minerStatus.reputation < 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-700">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-blue" />
-                      <span className="text-xs text-muted">
-                        Reputation restores +1 every 30 days of honest mining after a 30-day waiting period.
-                        Full reset at 365 days. Any new offense resets the clock.
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Clean Record */}
             {minerStatus.offenseCount === 0 && minerStatus.stakeAmount > 0 && (
-              <div className="p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: "rgba(0, 255, 136, 0.05)", border: "1px solid rgba(0, 255, 136, 0.15)" }}>
+              <div className="p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.15)" }}>
                 <Star className="w-4 h-4 text-success" />
-                <span className="text-sm text-success">Clean record. No offenses. Keep mining honestly.</span>
+                <span className="text-sm text-success">Clean record. Keep mining honestly.</span>
               </div>
             )}
           </div>
         ) : (
           <p className="text-muted text-sm">Connect wallet to see your miner status.</p>
         )}
-      </div>
-
-      {/* Mining Stats */}
-      <div className="mining-stats-grid">
-        <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <Activity className="w-5 h-5" style={{ color: "var(--color-node-teal)" }} />
-            <span className="stat-label">Hash Rate</span>
-          </div>
-          <div className="stat-value" style={{ color: "var(--color-node-teal)" }}>{hashRate.toFixed(1)}</div>
-          <div className="stat-unit">proofs/sec</div>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <Shield className="w-5 h-5 text-accent" />
-            <span className="stat-label">Min. Stake</span>
-          </div>
-          <div className="stat-value text-accent">$10 USD</div>
-          <div className="stat-unit">Dynamic (pegged)</div>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <Ban className="w-5 h-5 text-danger" />
-            <span className="stat-label">Fraud Penalty</span>
-          </div>
-          <div className="stat-value text-danger">50-100%</div>
-          <div className="stat-unit">+ Reputation loss</div>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <Zap className="w-5 h-5" style={{ color: "var(--color-hash-amber)" }} />
-            <span className="stat-label">Est. Daily</span>
-          </div>
-          <div className="stat-value" style={{ color: "var(--color-hash-amber)" }}>{(hashRate * 86400 * 100).toLocaleString()}</div>
-          <div className="stat-unit">AIC/day</div>
-        </div>
       </div>
 
       {/* Mining Control */}
@@ -206,34 +205,23 @@ export default function MinePage() {
             <div className={`w-3 h-3 rounded-full ${isMining ? 'pulse-dot-active' : 'pulse-dot-inactive'}`} />
             <div>
               <h2 className="text-lg font-semibold text-white">{isMining ? "Mining Active" : "Mining Stopped"}</h2>
-              <p className="text-sm text-muted">{isMining ? "Running AI inference" : "Start mining to earn AICOIN"}</p>
+              <p className="text-sm text-muted">
+                {isMining 
+                  ? `Running on ${tierNames[selectedTier]} — Processing ${tierTasks[selectedTier][0]}`
+                  : "Start mining to earn AICOIN"}
+              </p>
             </div>
           </div>
-          <button onClick={handleToggleMining} disabled={minerStatus?.isBanned || (minerStatus?.stakeAmount ?? 0) === 0} className={isMining ? "mining-stop-btn" : "mining-start-btn"}>
-            {isMining ? (<><Square className="w-4 h-4" /><span>Stop</span></>) : (<><Play className="w-4 h-4" /><span>Start</span></>)}
+          <button 
+            onClick={handleToggleMining} 
+            disabled={minerStatus?.isBanned || (minerStatus?.stakeAmount ?? 0) === 0} 
+            className={isMining ? "mining-stop-btn" : "mining-start-btn"}
+          >
+            {isMining ? (<><Square className="w-4 h-4" /><span>Stop</span></>) : (<><Play className="w-4 h-4" /><span>Start Mining</span></>)}
           </button>
         </div>
-        {minerStatus?.isBanned && <p className="text-sm text-danger mt-3">You are banned from mining due to repeated offenses.</p>}
-      </div>
-
-      {/* GPU Selection */}
-      <div className="feature-card mb-6">
-        <h2 className="section-title mb-4 flex items-center gap-2"><HardDrive className="w-5 h-5 text-accent" />Hardware</h2>
-        <div className="gpu-grid">
-          {gpuList.map((gpu, index) => (
-            <button key={gpu.name} onClick={() => !isMining && setSelectedGPU(index)} className={`gpu-card ${selectedGPU === index ? 'gpu-card-active' : ''}`} disabled={isMining}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="gpu-name">{gpu.name}</span>
-                {selectedGPU === index && <CircleDot className="w-4 h-4 text-accent" />}
-              </div>
-              <div className="gpu-specs">
-                <span className="gpu-spec">{gpu.memory}</span><span className="gpu-spec-divider">|</span>
-                <span className="gpu-spec">{gpu.hashRate} p/s</span><span className="gpu-spec-divider">|</span>
-                <span className="gpu-spec">{gpu.power}</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        {minerStatus?.isBanned && <p className="text-sm text-danger mt-3">Banned due to repeated offenses.</p>}
+        {(minerStatus?.stakeAmount ?? 0) === 0 && <p className="text-sm text-danger mt-3">Stake $10 worth of AIC to start mining.</p>}
       </div>
 
       {/* Mining Log */}
@@ -243,16 +231,18 @@ export default function MinePage() {
           {isMining ? (
             <div className="mining-log-entry">
               <span className="mining-log-time">Now</span>
-              <span className="mining-log-status text-success">Mining on {gpuList[selectedGPU].name} — Proofs submitting to Verifier V2</span>
+              <span className="mining-log-status text-success">
+                Mining on {tierNames[selectedTier]} — {tierTasks[selectedTier][0]} — Proofs submitting to Verifier
+              </span>
             </div>
           ) : (
             <div className="mining-log-entry">
               <span className="mining-log-time">--:--:--</span>
-              <span className="mining-log-status text-muted">Start mining to submit proofs on-chain</span>
+              <span className="mining-log-status text-muted">Select your hardware tier and start mining</span>
             </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+} 

@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -6,11 +5,11 @@ contract HalvingController {
     uint256 public currentHalving;
     uint256 public blockReward;
     uint256 public nextHalvingBlock;
-    uint256 public constant HALVING_INTERVAL = 210000;
-    uint256 public constant INITIAL_REWARD = 100 * 10**9;
+    uint256 public constant HALVING_INTERVAL = 10512000; // ~4 years on Ethereum (12s blocks)
+    uint256 public constant INITIAL_REWARD = 10 * 10**9; // 10 AIC per block
     uint256 public constant MAX_HALVINGS = 34;
     bool public miningActive;
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
     
     event HalvingExecuted(uint256 halvingNumber, uint256 newReward, uint256 blockNumber);
     event MiningEnded(uint256 blockNumber);
@@ -54,4 +53,4 @@ contract HalvingController {
         if (!miningActive || block.number >= nextHalvingBlock) return 0;
         return nextHalvingBlock - block.number;
     }
-}
+} 

@@ -1,4 +1,4 @@
- // SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
 interface IHalvingController {
@@ -8,12 +8,13 @@ interface IHalvingController {
 contract Treasury {
     address public governance;
     address public immutable halvingController;
-    uint256 public constant INITIAL_TREASURY_FEE = 34;
+    uint256 public constant INITIAL_TREASURY_FEE = 110;  // 1.1% — halves every 4 years
+    uint256 public constant VALIDATOR_FEE = 40;           // 0.4% — FIXED FOREVER
     uint256 public constant MAX_TREASURY = 100_000_000 * 10**9;
     uint256 public treasuryFee;
     uint256 public totalCollected;
     uint256 public lastHalvingApplied;
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.1.0";
     
     bool private locked;
     
@@ -60,6 +61,11 @@ contract Treasury {
         return treasuryFee;
     }
     
+    // Returns the validator fee — this NEVER halves
+    function getValidatorFee() public pure returns (uint256) {
+        return VALIDATOR_FEE;
+    }
+    
     function collect(uint256 amount) external {
         require(totalCollected + amount <= MAX_TREASURY, "Treasury full");
         totalCollected += amount;
@@ -79,4 +85,4 @@ contract Treasury {
         governance = newGovernance;
         emit GovernanceTransferred(oldGov, newGovernance);
     }
-}
+} 
