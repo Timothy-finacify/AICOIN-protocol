@@ -1,5 +1,5 @@
 // ============================================================
-// AICOIN PROTOCOL — SEPOLIA TESTNET (V1.1.0)
+// AICOIN PROTOCOL — SEPOLIA TESTNET (V1.4.0)
 // ============================================================
 
 export const AICOIN_ADDRESS = "0x88227791E59F5773E201210Bada58Cf42692A120";
