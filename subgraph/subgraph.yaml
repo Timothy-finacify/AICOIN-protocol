@@ -1,0 +1,356 @@
+specVersion: 1.0.0
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # ============ AICOIN TOKEN ============
+  - kind: ethereum
+    name: AICOIN
+    network: sepolia
+    source:
+      address: "0x88227791E59F5773E201210Bada58Cf42692A120"
+      abi: AICOIN
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Transfer
+        - BurnStat
+        - BurnMilestone
+      abis:
+        - name: AICOIN
+          file: ./abis/AICOIN.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+        - event: TokensBurned(uint256)
+          handler: handleTokensBurned
+        - event: BurnMilestone(uint256,uint256)
+          handler: handleBurnMilestone
+      file: ./src/aicoin.ts
+
+  # ============ PAYMENT ROUTER ============
+  - kind: ethereum
+    name: PaymentRouter
+    network: sepolia
+    source:
+      address: "0x5f94C2e4514ec96328e67eD921d06172B3dD0807"
+      abi: PaymentRouter
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Payment
+        - PaymentStat
+      abis:
+        - name: PaymentRouter
+          file: ./abis/PaymentRouter.json
+      eventHandlers:
+        - event: PaymentRouted(indexed address,indexed address,indexed bytes32,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handlePaymentRouted
+      file: ./src/payment-router.ts
+
+  # ============ COMPANY REGISTRY ============
+  - kind: ethereum
+    name: CompanyRegistry
+    network: sepolia
+    source:
+      address: "0x685A6DDFE6A86EC3354CB35B9092A2b556ee1A30"
+      abi: CompanyRegistry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Company
+        - EarningsUpdate
+        - Dispute
+      abis:
+        - name: CompanyRegistry
+          file: ./abis/CompanyRegistry.json
+      eventHandlers:
+        - event: CompanyRegistered(indexed address,string,bytes32,uint256)
+          handler: handleCompanyRegistered
+        - event: CompanyAutoVerified(indexed address,uint256)
+          handler: handleCompanyAutoVerified
+        - event: EarningsAdded(indexed address,uint256)
+          handler: handleEarningsAdded
+        - event: TrustScoreUpdated(indexed address,uint256,uint256)
+          handler: handleTrustScoreUpdated
+        - event: CompanySlashed(indexed address,uint256,string)
+          handler: handleCompanySlashed
+        - event: DisputeFiled(indexed bytes32,indexed address,address)
+          handler: handleDisputeFiled
+        - event: DisputeResolved(indexed bytes32,bool)
+          handler: handleDisputeResolved
+      file: ./src/company-registry.ts
+
+  # ============ MODEL REGISTRY ============
+  - kind: ethereum
+    name: ModelRegistry
+    network: sepolia
+    source:
+      address: "0xdC09bDbF5B765915507476142a7eC445c86d57f5"
+      abi: ModelRegistry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Model
+        - ModelVersion
+      abis:
+        - name: ModelRegistry
+          file: ./abis/ModelRegistry.json
+      eventHandlers:
+        - event: ModelRegistered(indexed bytes32,string,string,indexed uint8,indexed address,uint256,uint256)
+          handler: handleModelRegistered
+        - event: ModelStatusUpdated(indexed bytes32,uint8,uint8)
+          handler: handleModelStatusUpdated
+        - event: ModelRequestServed(indexed bytes32,indexed address,uint256,uint256,uint256)
+          handler: handleModelRequestServed
+        - event: ModelUptimeUpdated(indexed bytes32,uint256)
+          handler: handleModelUptimeUpdated
+        - event: ModelDeprecated(indexed bytes32,indexed bytes32)
+          handler: handleModelDeprecated
+      file: ./src/model-registry.ts
+
+  # ============ TREASURY ============
+  - kind: ethereum
+    name: Treasury
+    network: sepolia
+    source:
+      address: "0xF3ba88ab4B41d552189aF1A6CfD4f8c8304Cbe84"
+      abi: Treasury
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TreasuryStat
+      abis:
+        - name: Treasury
+          file: ./abis/Treasury.json
+      eventHandlers:
+        - event: FundsCollected(indexed address,uint256)
+          handler: handleFundsCollected
+        - event: FundsWithdrawn(indexed address,uint256,string)
+          handler: handleFundsWithdrawn
+        - event: TreasuryFeeUpdated(uint256,uint256)
+          handler: handleTreasuryFeeUpdated
+      file: ./src/treasury.ts
+
+  # ============ VALIDATOR POOL ============
+  - kind: ethereum
+    name: ValidatorPool
+    network: sepolia
+    source:
+      address: "0x1279759F4716e8A3dCe2C18f6E2B9DE58f2A1998"
+      abi: ValidatorPool
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Validator
+      abis:
+        - name: ValidatorPool
+          file: ./abis/ValidatorPool.json
+      eventHandlers:
+        - event: ValidatorStaked(indexed address,uint256)
+          handler: handleValidatorStaked
+        - event: ValidatorUnstaked(indexed address,uint256)
+          handler: handleValidatorUnstaked
+        - event: BlockRewardMinted(indexed address,uint256)
+          handler: handleBlockRewardMinted
+        - event: ValidatorPaid(indexed address,uint256,uint256)
+          handler: handleValidatorPaid
+      file: ./src/validator-pool.ts
+
+  # ============ HALVING CONTROLLER ============
+  - kind: ethereum
+    name: HalvingController
+    network: sepolia
+    source:
+      address: "0x9B89DBD7d0677BD8ed7eeC90CB9E4835Be8b90ad"
+      abi: HalvingController
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - HalvingStat
+      abis:
+        - name: HalvingController
+          file: ./abis/HalvingController.json
+      eventHandlers:
+        - event: HalvingExecuted(uint256,uint256,uint256)
+          handler: handleHalvingExecuted
+        - event: BlockRewardMinted(indexed address,uint256)
+          handler: handleBlockRewardMinted
+        - event: MiningEnded(uint256,uint256)
+          handler: handleMiningEnded
+      file: ./src/halving-controller.ts
+
+  # ============ SESSION ============
+  - kind: ethereum
+    name: Session
+    network: sepolia
+    source:
+      address: "0xB56B429E99ee8AC6a8210F96cdb9E701010CB0c1"
+      abi: Session
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - UserSession
+      abis:
+        - name: Session
+          file: ./abis/Session.json
+      eventHandlers:
+        - event: SessionApproved(indexed address,indexed address,uint256,uint256)
+          handler: handleSessionApproved
+        - event: SessionSpent(indexed address,indexed address,indexed address,uint256,bytes32)
+          handler: handleSessionSpent
+        - event: SessionRevoked(indexed address,indexed address)
+          handler: handleSessionRevoked
+      file: ./src/session.ts
+
+  # ============ DEVICE REGISTRY ============
+  - kind: ethereum
+    name: DeviceRegistry
+    network: sepolia
+    source:
+      address: "0x1111111111111111111111111111111111111111"  # Replace after deployment
+      abi: DeviceRegistry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Device
+      abis:
+        - name: DeviceRegistry
+          file: ./abis/DeviceRegistry.json
+      eventHandlers:
+        - event: DeviceRegistered(indexed bytes32,indexed address)
+          handler: handleDeviceRegistered
+        - event: DeviceLostToPool(indexed bytes32,uint256,string)
+          handler: handleDeviceLostToPool
+        - event: DeviceDeactivated(indexed bytes32)
+          handler: handleDeviceDeactivated
+      file: ./src/device-registry.ts
+
+  # ============ GAS RELAYER FUND ============
+  - kind: ethereum
+    name: GasRelayerFund
+    network: sepolia
+    source:
+      address: "0x2222222222222222222222222222222222222222"  # Replace after deployment
+      abi: GasRelayerFund
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - GasRelayerStat
+      abis:
+        - name: GasRelayerFund
+          file: ./abis/GasRelayerFund.json
+      eventHandlers:
+        - event: GasFundCollected(uint256)
+          handler: handleGasFundCollected
+        - event: GasRefunded(indexed address,uint256,indexed address)
+          handler: handleGasRefunded
+      file: ./src/gas-relayer.ts
+
+  # ============ MINING RESERVE ============
+  - kind: ethereum
+    name: MiningReserve
+    network: sepolia
+    source:
+      address: "0x3333333333333333333333333333333333333333"  # Replace after deployment
+      abi: MiningReserve
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MiningReserveStat
+      abis:
+        - name: MiningReserve
+          file: ./abis/MiningReserve.json
+      eventHandlers:
+        - event: FeesCollected(uint256)
+          handler: handleFeesCollected
+        - event: MiningEnded(uint256,uint256)
+          handler: handleMiningEnded
+        - event: FundsReleased(indexed address,uint256,uint256)
+          handler: handleFundsReleased
+      file: ./src/mining-reserve.ts
+
+  # ============ VERIFIER ============
+  - kind: ethereum
+    name: Verifier
+    network: sepolia
+    source:
+      address: "0xc939817e48488De645946b7ef307Af03EabFc4af"
+      abi: Verifier
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - VerifierStat
+      abis:
+        - name: Verifier
+          file: ./abis/Verifier.json
+      eventHandlers:
+        - event: MinerStaked(indexed address,uint256)
+          handler: handleMinerStaked
+        - event: MinerPenalized(indexed address,uint256,int256,string)
+          handler: handleMinerPenalized
+        - event: ProofSubmitted(indexed bytes32,indexed address,bytes32)
+          handler: handleProofSubmitted
+      file: ./src/verifier.ts
+
+  # ============ AGENT WALLET ============
+  - kind: ethereum
+    name: AgentWallet
+    network: sepolia
+    source:
+      address: "0x624FCa0FebF0d986AB7eBBAE6af91CC9E08eC6Ef"
+      abi: AgentWallet
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Agent
+      abis:
+        - name: AgentWallet
+          file: ./abis/AgentWallet.json
+      eventHandlers:
+        - event: AgentCreated(indexed address,indexed address,uint256,uint256)
+          handler: handleAgentCreated
+        - event: AgentSpent(indexed address,indexed address,bytes32,uint256,uint256)
+          handler: handleAgentSpent
+        - event: AgentRefilled(indexed address,uint256,uint256)
+          handler: handleAgentRefilled
+      file: ./src/agent-wallet.ts

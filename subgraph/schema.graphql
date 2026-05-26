@@ -1,13 +1,74 @@
-type Company @entity {
+# ============ AICOIN ============
+type Transfer @entity {
   id: Bytes!
+  from: Bytes!
+  to: Bytes!
+  amount: BigInt!
+  burned: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type BurnStat @entity {
+  id: ID!                          # "global"
+  totalBurned: BigInt!
+  circulatingSupply: BigInt!
+  dailyBurned: BigInt!
+  lastUpdated: BigInt!
+}
+
+type BurnMilestone @entity {
+  id: ID!
+  milestoneNumber: Int!
+  totalBurned: BigInt!
+  timestamp: BigInt!
+}
+
+# ============ PAYMENT ROUTER ============
+type Payment @entity {
+  id: Bytes!                       # tx hash + log index
+  payer: Bytes!
+  company: Company!
+  model: Model!
+  totalAmount: BigInt!
+  burnAmount: BigInt!
+  treasuryAmount: BigInt!
+  validatorAmount: BigInt!
+  gasFundAmount: BigInt!
+  companyAmount: BigInt!
+  inputTokens: BigInt!
+  outputTokens: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type PaymentStat @entity {
+  id: ID!                          # "global" or "daily-{date}"
+  totalPayments: BigInt!
+  totalVolume: BigInt!
+  totalBurned: BigInt!
+  period: String!
+  timestamp: BigInt!
+}
+
+# ============ COMPANY REGISTRY ============
+type Company @entity {
+  id: Bytes!                       # wallet address
   name: String!
-  wallet: Bytes!
   publicKey: Bytes!
   verified: Boolean!
+  trustScore: Int!
+  stakedAmount: BigInt!
   registeredAt: BigInt!
   totalEarned: BigInt!
-  reputation: BigInt!
+  totalRequestsServed: BigInt!
+  totalDisputes: Int!
+  resolvedDisputes: Int!
+  active: Boolean!
+  endpointURI: String
   earningsHistory: [EarningsUpdate!]! @derivedFrom(field: "company")
+  models: [Model!]! @derivedFrom(field: "company")
+  disputes: [Dispute!]! @derivedFrom(field: "company")
 }
 
 type EarningsUpdate @entity {
@@ -17,16 +78,132 @@ type EarningsUpdate @entity {
   timestamp: BigInt!
 }
 
-type BurnStat @entity {
-  id: ID!
-  totalBurned: BigInt!
-  dailyBurned: BigInt!
-  lastUpdated: BigInt!
+type Dispute @entity {
+  id: Bytes!
+  disputeId: Bytes!
+  company: Company!
+  complainant: Bytes!
+  evidenceHash: String!
+  amountInDispute: BigInt!
+  resolved: Boolean!
+  upheld: Boolean
+  filedAt: BigInt!
+  resolvedAt: BigInt
 }
 
+# ============ MODEL REGISTRY ============
+type Model @entity {
+  id: Bytes!                       # modelId
+  name: String!
+  version: String!
+  company: Company!
+  category: String!
+  inputPricePer1MTokens: BigInt!
+  outputPricePer1MTokens: BigInt!
+  autoPricing: Boolean!
+  totalRequestsServed: BigInt!
+  totalInputTokensServed: BigInt!
+  totalOutputTokensServed: BigInt!
+  uptimePercent: Int!
+  status: String!
+  registeredAt: BigInt!
+  lastServedAt: BigInt
+}
+
+type ModelVersion @entity {
+  id: Bytes!                       # company + name
+  company: Bytes!
+  name: String!
+  currentModelId: Bytes!
+  totalVersions: Int!
+}
+
+# ============ TREASURY ============
 type TreasuryStat @entity {
-  id: ID!
+  id: ID!                          # "global"
   totalCollected: BigInt!
-  currentFee: BigInt!
+  totalWithdrawn: BigInt!
+  currentFee: Int!
+  balance: BigInt!
+}
+
+# ============ VALIDATOR POOL ============
+type Validator @entity {
+  id: Bytes!                       # wallet address
+  stakedAmount: BigInt!
+  totalEarned: BigInt!
+  active: Boolean!
+  registeredAt: BigInt!
+  lastRewardBlock: BigInt
+}
+
+# ============ HALVING CONTROLLER ============
+type HalvingStat @entity {
+  id: ID!                          # "global"
+  currentHalving: Int!
+  blockReward: BigInt!
+  totalMined: BigInt!
   nextHalvingBlock: BigInt!
+  miningActive: Boolean!
+}
+
+# ============ SESSION ============
+type UserSession @entity {
+  id: Bytes!                       # keccak256(user + dapp)
+  user: Bytes!
+  dapp: Bytes!
+  allowance: BigInt!
+  spent: BigInt!
+  expiresAt: BigInt!
+  active: Boolean!
+}
+
+# ============ DEVICE REGISTRY ============
+type Device @entity {
+  id: Bytes!                       # deviceId
+  owner: Bytes!
+  registeredAt: BigInt!
+  lastActiveAt: BigInt!
+  totalRequests: BigInt!
+  active: Boolean!
+  inLostPool: Boolean!
+}
+
+# ============ GAS RELAYER FUND ============
+type GasRelayerStat @entity {
+  id: ID!                          # "global"
+  totalCollected: BigInt!
+  totalSpent: BigInt!
+  balance: BigInt!
+}
+
+# ============ MINING RESERVE ============
+type MiningReserveStat @entity {
+  id: ID!                          # "global"
+  totalReserved: BigInt!
+  totalReleased: BigInt!
+  miningEnded: Boolean!
+  releaseActive: Boolean!
+  balance: BigInt!
+}
+
+# ============ VERIFIER ============
+type VerifierStat @entity {
+  id: ID!                          # "global"
+  totalStaked: BigInt!
+  totalSlashed: BigInt!
+  totalProofsVerified: BigInt!
+}
+
+# ============ AGENT WALLET ============
+type Agent @entity {
+  id: Bytes!                       # agent wallet address
+  businessOwner: Bytes!
+  balance: BigInt!
+  minBalance: BigInt!
+  refillAmount: BigInt!
+  totalSpent: BigInt!
+  totalTransactions: BigInt!
+  active: Boolean!
+  createdAt: BigInt!
 }
