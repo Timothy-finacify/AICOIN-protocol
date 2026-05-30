@@ -207,3 +207,129 @@ type Agent @entity {
   active: Boolean!
   createdAt: BigInt!
 }
+
+# ============ P2P ESCROW ============
+type Trade @entity {
+  id: ID!
+  tradeId: BigInt!
+  seller: Bytes
+  buyer: Bytes
+  amount: BigInt!
+  paymentMethod: String!
+  sellerContact: String!
+  status: String!
+  stake: BigInt!
+  proofData: String!
+  disputeId: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type Dispute @entity {
+  id: ID!
+  disputeId: BigInt!
+  trade: Trade!
+  reason: String!
+  resolved: Boolean!
+  sellerWins: Boolean
+  resolution: String!
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type UserReputation @entity {
+  id: ID!
+  address: String!
+  score: BigInt!
+  completedTrades: BigInt!
+  disputedTrades: BigInt!
+  totalStaked: BigInt!
+}
+
+# ============ MULTI MODEL ROUTER ============
+type Provider @entity {
+  id: Bytes!
+  address: Bytes!
+  name: String!
+  endpointURI: String!
+  active: Boolean!
+  totalRequests: BigInt!
+  totalTokensServed: BigInt!
+  registeredAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type ModelRoute @entity {
+  id: Bytes!
+  modelId: Bytes!
+  provider: Provider!
+  category: Int!
+  active: Boolean!
+  addedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# ============ WITHDRAWAL MANAGER ============
+type Withdrawal @entity {
+  id: Bytes!
+  company: Bytes!
+  recipient: Bytes!
+  amount: BigInt!
+  reason: String!
+  executedAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type CompanyWithdrawalStats @entity {
+  id: ID!
+  company: String!
+  totalWithdrawn: BigInt!
+  pendingWithdrawals: BigInt!
+  withdrawalCount: BigInt!
+}
+
+# ============ BATCH PAYMENT ROUTER ============
+type BatchPayment @entity {
+  id: Bytes!
+  payer: Bytes!
+  count: Int!
+  gasSaved: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type BatchPaymentStats @entity {
+  id: ID!
+  totalBatched: BigInt!
+  totalGasSaved: BigInt!
+  totalBatches: BigInt!
+}
+
+# ============ AIC BRIDGE ============
+type BridgeRequest @entity {
+  id: ID!
+  requestId: BigInt!
+  user: Bytes!
+  fromChain: String!
+  toChain: String!
+  amount: BigInt!
+  fee: BigInt!
+  completed: Boolean!
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type BridgeStats @entity {
+  id: ID!
+  totalBridged: BigInt!
+  totalFees: BigInt!
+  totalRequests: BigInt!
+}

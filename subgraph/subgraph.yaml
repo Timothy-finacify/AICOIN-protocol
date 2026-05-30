@@ -354,3 +354,132 @@ dataSources:
         - event: AgentRefilled(indexed address,uint256,uint256)
           handler: handleAgentRefilled
       file: ./src/agent-wallet.ts
+        # ============ P2P ESCROW ============
+  - kind: ethereum
+    name: P2PEscrow
+    network: sepolia
+    source:
+      address: "0xbb15c2F81d02eDc03D23Cb1CF557BE3194af6225"
+      abi: P2PEscrow
+      startBlock: 10949790
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Trade
+        - Dispute
+      abis:
+        - name: P2PEscrow
+          file: ./abis/P2PEscrow.json
+      eventHandlers:
+        - event: TradeCreated(indexed uint256,indexed address,uint256,string)
+          handler: handleTradeCreated
+        - event: TradeTaken(indexed uint256,indexed address)
+          handler: handleTradeTaken
+        - event: TradeReleased(indexed uint256,indexed address)
+          handler: handleTradeReleased
+        - event: TradeCancelled(indexed uint256)
+          handler: handleTradeCancelled
+        - event: DisputeRaised(indexed uint256,uint256,string)
+          handler: handleDisputeRaised
+        - event: DisputeResolved(indexed uint256,bool,string)
+          handler: handleDisputeResolved
+      file: ./src/p2p-escrow.ts
+
+  # ============ MULTI MODEL ROUTER ============
+  - kind: ethereum
+    name: MultiModelRouter
+    network: sepolia
+    source:
+      address: "0x89dA30DCF44cA4716FD866d8BC9C54870A02550C"
+      abi: MultiModelRouter
+      startBlock: 10949790
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Provider
+        - Route
+      abis:
+        - name: MultiModelRouter
+          file: ./abis/MultiModelRouter.json
+      eventHandlers:
+        - event: ProviderRegistered(indexed address,string,string)
+          handler: handleProviderRegistered
+        - event: RouteAdded(indexed bytes32,indexed address,uint8)
+          handler: handleRouteAdded
+        - event: RouteRemoved(indexed bytes32)
+          handler: handleRouteRemoved
+      file: ./src/multi-model-router.ts
+
+  # ============ WITHDRAWAL MANAGER ============
+  - kind: ethereum
+    name: WithdrawalManager
+    network: sepolia
+    source:
+      address: "0xE359e20f7eaA0F69Ea218f68ecC37CE23e4F2650"
+      abi: WithdrawalManager
+      startBlock: 10949790
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Withdrawal
+      abis:
+        - name: WithdrawalManager
+          file: ./abis/WithdrawalManager.json
+      eventHandlers:
+        - event: WithdrawalRequested(indexed address,uint256,string)
+          handler: handleWithdrawalRequested
+        - event: WithdrawalExecuted(indexed address,indexed address,uint256)
+          handler: handleWithdrawalExecuted
+      file: ./src/withdrawal-manager.ts
+
+  # ============ BATCH PAYMENT ROUTER ============
+  - kind: ethereum
+    name: BatchPaymentRouter
+    network: sepolia
+    source:
+      address: "0xc911981d5A06796f098b8799255f6ED9652b9acF"
+      abi: BatchPaymentRouter
+      startBlock: 10949790
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - BatchPayment
+      abis:
+        - name: BatchPaymentRouter
+          file: ./abis/BatchPaymentRouter.json
+      eventHandlers:
+        - event: BatchProcessed(indexed address,uint256,uint256)
+          handler: handleBatchProcessed
+      file: ./src/batch-payment-router.ts
+
+  # ============ AIC BRIDGE ============
+  - kind: ethereum
+    name: AICBridge
+    network: sepolia
+    source:
+      address: "0xa4a81A59640D7544B4e4d839c4B1fcABA0bb67bD"
+      abi: AICBridge
+      startBlock: 10949790
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - BridgeRequest
+      abis:
+        - name: AICBridge
+          file: ./abis/AICBridge.json
+      eventHandlers:
+        - event: BridgeRequested(indexed uint256,indexed address,string,string,uint256,uint256)
+          handler: handleBridgeRequested
+        - event: BridgeCompleted(indexed uint256,indexed address,uint256)
+          handler: handleBridgeCompleted
+      file: ./src/aic-bridge.ts

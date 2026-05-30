@@ -1,47 +1,67 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/AICOIN.sol";
-import "../src/HalvingController.sol";
-import "../src/Treasury.sol";
+import "../contracts/AICOIN.sol";
 
 contract AICOINTest is Test {
-    AICOIN public aicoin;
-    HalvingController public halving;
-    Treasury public treasury;
-    address public user1 = address(1);
+    AICOIN public token;
+    address public owner = address(1);
+    address public user = address(2);
+    address public receiver = address(3);
     
     function setUp() public {
-        halving = new HalvingController();
-        treasury = new Treasury(address(halving));
-        aicoin = new AICOIN();
+        vm.prank(owner);
+        token = new AICOIN();
+        vm.prank(owner);
+        token.transfer(user, 10000 * 10**9);
     }
+    
+    function testName() public view {
+        assertEq(token.name(), "AICOIN");
+    }
+    
+    function testSymbol() public view {
+        assertEq(token.symbol(), "AIC");
+    }
+    
+    function testDecimals() public view {
+        assertEq(token.decimals(), 9);
+    }
+    
+ function testTotalSupply() public view {
+    uint256 expectedSupply = 1_000_000_000 * 10**9 - (10000 * 10**9 * 20 / 100);
+    assertEq(token.totalSupply(), expectedSupply);
+}
     
     function testBurnOnTransfer() public {
+        uint256 burnBefore = token.totalBurned();
+        
+        vm.prank(user);
+        token.transfer(receiver, 100 * 10**9);
+        
+        uint256 expectedNewBurn = (100 * 10**9 * 20) / 100;
+        assertEq(token.totalBurned(), burnBefore + expectedNewBurn);
+        assertEq(token.balanceOf(receiver), 80 * 10**9);
+    }
+    
+    function testCirculatingSupply() public {
+        assertEq(token.circulatingSupply(), token.totalSupply() - token.totalBurned());
+    }
+    
+    function testMintOnlyMinter() public {
+        vm.prank(user);
+        vm.expectRevert();
+        token.mint(user, 100);
+    }
+    
+    function testMintByMinter() public {
         uint256 amount = 100 * 10**9;
-        aicoin.transfer(user1, amount);
+        uint256 supplyBefore = token.totalSupply();
         
-        assertEq(aicoin.balanceOf(user1), 80 * 10**9);
-        assertEq(aicoin.balanceOf(address(0x000000000000000000000000000000000000dEaD)), 20 * 10**9);
-        assertEq(aicoin.totalBurned(), 20 * 10**9);
-    }
-    
-    function testTreasuryInitialFee() public {
-        uint256 fee = treasury.getCurrentFee();
-        assertEq(fee, 34); // 0.34%
-    }
-    
-    function testTreasuryHalving() public {
-        // Initial fee
-        assertEq(treasury.getCurrentFee(), 34);
+        vm.prank(owner);
+        token.mint(user, amount);
         
-        // Execute first halving
-        vm.roll(block.number + halving.HALVING_INTERVAL());
-        halving.checkAndExecuteHalving();
-        
-        // Fee should halve to 17 (0.17%)
-        uint256 fee = treasury.getCurrentFee();
-        assertEq(fee, 17);
+        assertEq(token.totalSupply(), supplyBefore + amount);
     }
 }

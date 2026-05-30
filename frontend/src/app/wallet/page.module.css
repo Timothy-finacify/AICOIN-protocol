@@ -1,0 +1,78 @@
+.container { max-width: 520px; margin: 0 auto; }
+
+.topBar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+.pageTitle { font-size: 26px; font-weight: 700; letter-spacing: -0.4px; color: #F0F0F0; }
+.badge { display: flex; align-items: center; gap: 6px; background: rgba(0,210,120,0.1); border: 1px solid rgba(0,210,120,0.2); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #00D278; }
+.badgeDot { width: 6px; height: 6px; border-radius: 50%; background: #00D278; }
+.refreshBtn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 7px 12px; border-radius: 8px; cursor: pointer; color: #9999AA; font-size: 12px; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
+.refreshBtn:hover { border-color: #C5941A; color: #C5941A; }
+
+/* Balance — softer gradient */
+.balanceCard { background: linear-gradient(160deg, #1B1650 0%, #12122A 100%); border: 1px solid rgba(200,155,30,0.18); border-radius: 20px; padding: 36px 28px 28px; margin-bottom: 24px; position: relative; overflow: hidden; }
+.balanceCard::before { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(200,155,30,0.05), transparent); pointer-events: none; }
+.balanceLabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.8px; color: #8A8AAA; margin-bottom: 6px; }
+.balanceValue { font-size: 48px; font-weight: 750; font-family: 'JetBrains Mono','Fira Code',monospace; letter-spacing: -2px; line-height: 1; color: #D4A830; }
+.balanceUnit { font-size: 13px; font-weight: 500; color: #8A8AAA; margin-top: 2px; }
+.addressRow { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 14px; margin-top: 20px; }
+.addressText { font-size: 11px; font-family: 'JetBrains Mono',monospace; color: #8A8AAA; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copyBtn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 7px; border-radius: 7px; cursor: pointer; color: #8A8AAA; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.copyBtn:hover { border-color: #C5941A; color: #C5941A; }
+
+/* Tabs */
+.tabs { display: flex; gap: 3px; background: #18182D; border-radius: 12px; padding: 3px; margin-bottom: 22px; }
+.tab { flex: 1; padding: 11px 6px; border-radius: 9px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; background: transparent; color: #7A7A99; text-align: center; }
+.tabActive { background: #2A2560; color: #E0E0F0; }
+
+/* Actions */
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.action { background: #161630; border: 1px solid #252545; border-radius: 14px; padding: 24px 20px; cursor: pointer; transition: all 0.2s; }
+.action:hover { border-color: rgba(200,155,30,0.35); }
+.actionIcon { margin-bottom: 14px; }
+.actionTitle { font-size: 14px; font-weight: 600; color: #E8E8F0; margin-bottom: 3px; }
+.actionSub { font-size: 11px; color: #7A7A99; }
+
+/* Cards */
+.card { background: #161630; border: 1px solid #252545; border-radius: 16px; padding: 26px; margin-bottom: 18px; }
+.cardTitle { font-size: 15px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; color: #E8E8F0; }
+
+/* Form */
+.field { margin-bottom: 16px; }
+.fieldLabel { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #7A7A99; margin-bottom: 7px; }
+.fieldInput { width: 100%; padding: 13px 14px; border-radius: 9px; border: 1px solid #252545; background: #1A1A32; color: #E8E8F0; font-size: 14px; font-family: 'JetBrains Mono',monospace; outline: none; box-sizing: border-box; transition: border-color 0.2s; }
+.fieldInput:focus { border-color: #C5941A; }
+.fieldInput::placeholder { color: #3D3D58; }
+.inputWrap { position: relative; }
+.maxBtn { position: absolute; right: 3px; top: 3px; background: rgba(200,155,30,0.08); border: 1px solid rgba(200,155,30,0.2); color: #C5941A; padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.maxBtn:hover { background: rgba(200,155,30,0.15); }
+.burnNote { font-size: 11px; color: #D4645C; margin-top: 5px; font-family: 'JetBrains Mono',monospace; }
+
+/* Buttons */
+.btn { width: 100%; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 13px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.25s; background: #C5941A; color: #0D0D1A; letter-spacing: 0.2px; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn:not(:disabled):hover { background: #D4A830; box-shadow: 0 6px 24px rgba(200,155,30,0.25); }
+.btnOutline { background: transparent; border: 1px solid rgba(200,155,30,0.3); color: #C5941A; width: 100%; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.25s; }
+.btnOutline:hover { border-color: #C5941A; background: rgba(200,155,30,0.04); }
+
+/* Session card */
+.sessionCard { background: linear-gradient(135deg, rgba(90,80,210,0.06), rgba(60,130,240,0.03)); border: 1px solid rgba(90,80,210,0.18); }
+.sessionPill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #00D278; background: rgba(0,210,120,0.08); padding: 4px 10px; border-radius: 20px; margin-bottom: 12px; }
+
+/* Receive */
+.receiveCenter { text-align: center; }
+.qrBox { background: #FAFAFA; padding: 24px; border-radius: 16px; display: inline-block; margin-bottom: 20px; }
+
+/* Activity */
+.emptyState { text-align: center; padding: 36px 0; }
+.emptyIcon { color: #252545; margin-bottom: 10px; }
+.emptyTitle { font-size: 13px; font-weight: 500; color: #7A7A99; margin-bottom: 3px; }
+.emptyText { font-size: 11px; color: #3D3D58; }
+
+/* Success */
+.successMsg { margin-top: 12px; padding: 10px 14px; background: rgba(0,210,120,0.06); border: 1px solid rgba(0,210,120,0.18); border-radius: 8px; font-size: 11px; color: #00D278; font-family: 'JetBrains Mono',monospace; word-break: break-all; }
+
+/* Connect */
+.connectWrap { display: flex; justify-content: center; padding-top: 80px; }
+.connectBox { background: #161630; border: 1px solid #252545; border-radius: 20px; padding: 48px 40px; max-width: 400px; text-align: center; }
+.connectIcon { color: #C5941A; margin-bottom: 20px; }
+.connectTitle { font-size: 20px; font-weight: 700; color: #E8E8F0; margin-bottom: 6px; }
+.connectText { color: #7A7A99; font-size: 13px; }

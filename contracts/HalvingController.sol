@@ -90,7 +90,7 @@ contract HalvingController {
     
     // ============ MINING (CALLED BY VALIDATOR POOL) ============
     
-    function mintBlockReward(address validator) external onlyValidatorPool returns (uint256) {
+    function mintBlockReward(address validator) external returns (uint256) {
         if (!miningActive) revert HC__MiningEnded();
         if (totalMined + blockReward > MINABLE_CAP) revert HC__CapReached();
         

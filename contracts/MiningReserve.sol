@@ -145,13 +145,13 @@ contract MiningReserve is Ownable2Step {
         
         // With 1% monthly release, the reserve never fully depletes
         // This gives approximate years until reserve drops below 1 AIC
-        uint256 years = 0;
+        uint256 yrs = 0;
         uint256 simulated = remaining;
-        while (simulated > 1e9 && years < 1000) {
+        while (simulated > 1e9 && yrs < 1000) {
             uint256 yearly = (simulated * MONTHLY_RELEASE_RATE * 12) / 100;
             simulated -= yearly;
-            years++;
+            yrs++;
         }
-        return years;
+        return yrs;
     }
 } 
